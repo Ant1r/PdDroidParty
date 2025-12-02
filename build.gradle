@@ -21,6 +21,28 @@ allprojects {
 
 apply plugin: 'com.android.application'
 
+tasks.register("createResRaw") {
+    mkdir "res/raw"
+}
+
+tasks.register("zipDemos", Zip) {
+    group = "Android"
+    description = "Zip the demo patches to resources"
+    archiveFileName = "demos.zip"
+    destinationDirectory = layout.projectDirectory.dir("res/raw");
+    from "droidparty-demos"
+    dependsOn("createResRaw")
+}
+
+tasks.register("zipAbs", Zip) {
+    group = "Android"
+    description = "Zip the bundle abstractions to resources"
+    archiveFileName = "abstractions.zip"
+    destinationDirectory = layout.projectDirectory.dir("res/raw");
+    from "bundled-abstractions"
+    dependsOn("createResRaw")
+}
+
 android {
     namespace = 'cx.mccormick.pddroidparty'
     compileSdkVersion 34
@@ -71,6 +93,10 @@ android {
         // Extract native libs from prefab, to be able to access the headers and to link to the libs
         prefab = true
         viewBinding = true
+        tasks.named("preBuild") {
+            dependsOn("zipDemos")
+            dependsOn("zipAbs")
+        }
     }
 }
 
