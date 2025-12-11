@@ -1,11 +1,10 @@
 package cx.mccormick.pddroidparty;
 
-import java.text.DecimalFormat;
-
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Rect;
-import android.text.StaticLayout;
+import android.graphics.Path;
+import android.graphics.Paint;
 import android.util.Log;
 import android.view.MotionEvent;
 
@@ -15,8 +14,6 @@ public class Numberbox extends Widget {
 	float min, max;
 	int numwidth;
 
-	StaticLayout numLayout = null;
-	DecimalFormat fmt = null;
 	Rect tRect = new Rect();
 
 	boolean down = false;
@@ -38,7 +35,6 @@ public class Numberbox extends Widget {
 				calclen.append("#");
 			}
 		}
-		fmt = new DecimalFormat(calclen.toString());
 		paint.getTextBounds(calclen.toString(), 0, calclen.length(), tRect);
 		dRect.set(tRect);
 		dRect.sort();
@@ -67,12 +63,20 @@ public class Numberbox extends Widget {
 	}
 
 	public void draw(Canvas canvas) {
+		Path path = new Path();
+		path.moveTo(dRect.left, dRect.top);
+		path.lineTo(dRect.right - 5, dRect.top);
+		path.lineTo(dRect.right, dRect.top + 5);
+		path.lineTo(dRect.right, dRect.bottom);
+		path.lineTo(dRect.left, dRect.bottom);
+		path.close();
 		paint.setColor(Color.BLACK);
-		canvas.drawLine(dRect.left + 1, dRect.top, dRect.right - 5, dRect.top, paint);
-		canvas.drawLine(dRect.left + 1, dRect.bottom, dRect.right, dRect.bottom, paint);
-		canvas.drawLine(dRect.left, dRect.top + 1, dRect.left, dRect.bottom, paint);
-		canvas.drawLine(dRect.right, dRect.top + 5, dRect.right, dRect.bottom, paint);
-		canvas.drawLine(dRect.right - 5, dRect.top, dRect.right, dRect.top + 5, paint);
+		paint.setStyle(Paint.Style.STROKE);
+		paint.setStrokeWidth(1);
+		canvas.drawPath(path, paint);
+		paint.setStrokeWidth(0);
+		paint.setStyle(Paint.Style.FILL);
+		canvas.drawText(formatNumber(val, numwidth), dRect.left + 3, dRect.centerY() + dRect.height() * (float)0.25, paint);
 		drawLabel(canvas);
 	}
 

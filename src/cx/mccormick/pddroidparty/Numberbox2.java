@@ -1,9 +1,10 @@
 package cx.mccormick.pddroidparty;
 
-import java.text.DecimalFormat;
-
 import android.graphics.Canvas;
 import android.graphics.Rect;
+import android.graphics.Path;
+import android.graphics.Paint;
+import android.graphics.Color;
 import android.util.Log;
 
 public class Numberbox2 extends Numberbox {
@@ -26,7 +27,6 @@ public class Numberbox2 extends Numberbox {
 				calclen.append("#");
 			}
 		}
-		fmt = new DecimalFormat(calclen.toString());
 		paint.getTextBounds(">" + calclen.toString(), 0, calclen.length() + 1, tRect);
 		dRect.set(tRect);
 		dRect.sort();
@@ -46,11 +46,7 @@ public class Numberbox2 extends Numberbox {
 		min = Float.parseFloat(atomline[7]);
 		max = Float.parseFloat(atomline[8]);
 		init = Integer.parseInt(atomline[10]);
-		sendname = app.app.replaceDollarZero(atomline[11]);
-		receivename = atomline[12];
-		label = setLabel(atomline[13]);
-		labelpos[0] = Float.parseFloat(atomline[14]) ;
-		labelpos[1] = Float.parseFloat(atomline[15]) ;
+		initCommonArgs(app, atomline, 11);
 
 		// set the value to the init value if possible
 		setval(Float.parseFloat(atomline[21]), 0);
@@ -63,12 +59,23 @@ public class Numberbox2 extends Numberbox {
 	}
 
 	public void draw(Canvas canvas) {
-		canvas.drawLine(dRect.left + 1, dRect.top, dRect.right - 5, dRect.top, paint);
-		canvas.drawLine(dRect.left + 1, dRect.bottom, dRect.right, dRect.bottom, paint);
-		canvas.drawLine(dRect.left, dRect.top + 1, dRect.left, dRect.bottom, paint);
-		canvas.drawLine(dRect.right, dRect.top + 5, dRect.right, dRect.bottom, paint);
-		canvas.drawLine(dRect.right - 5, dRect.top, dRect.right, dRect.top + 5, paint);
-		canvas.drawText(">" + fmt.format(val), dRect.left + 3, dRect.centerY() + dRect.height() * (float)0.25, paint);
+		Path path = new Path();
+		path.moveTo(dRect.left, dRect.top);
+		path.lineTo(dRect.right - 5, dRect.top);
+		path.lineTo(dRect.right, dRect.top + 5);
+		path.lineTo(dRect.right, dRect.bottom);
+		path.lineTo(dRect.left, dRect.bottom);
+		path.close();
+		path.lineTo(dRect.left + 6, dRect.top + dRect.height() / 2);
+		path.lineTo(dRect.left, dRect.bottom);
+		paint.setColor(Color.BLACK);
+		paint.setStyle(Paint.Style.STROKE);
+		paint.setStrokeWidth(1);
+		canvas.drawPath(path, paint);
+		paint.setStrokeWidth(0);
+		paint.setStyle(Paint.Style.FILL);
+		canvas.drawText(formatNumber(val, numwidth), dRect.left + 8, dRect.centerY() + dRect.height() * (float)0.25, paint);
+		drawLabel(canvas);
 	}
 }
 
