@@ -81,6 +81,7 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 	private int READ_EXTERNAL_STORAGE_PERMISSION_CODE = 54035940;
 	private boolean isFirstRun = false;
 	private boolean isNewInstall = false;
+	final String TAG = "PatchSelector";
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -94,19 +95,19 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 		} else {
 			initGui();
 		}
-		Log.d("PdDroidParty", "Pd version: " + PdVersionString.get());
+		Log.d(TAG, "Pd version: " + PdVersionString.get());
 	}
 
 	@Override
 	protected void onStart() {
 		super.onStart();
-		Log.d("PatchSelector", "+ onStart");
+		Log.d(TAG, "onStart");
 		final Intent intent = getIntent();
 		if (intent != null && intent.getAction().equals(Intent.ACTION_VIEW)) {
-			Log.d("PatchSelector", "> Got intent : " + intent);
+			Log.d(TAG, "> Got intent : " + intent);
 			final Uri data = intent.getData();
 			if (data != null) {
-				Log.d("PatchSelector", "> Got data   : " + data);
+				Log.d(TAG, "> Got data   : " + data);
 				if(data.toString().contains("http")) {
 					new DownloadFileFromURL().execute(data.toString());
 				}
@@ -117,7 +118,7 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 				} else {
 					// handle as file uri
 					pdzZipPath = data.getPath();
-					Log.d("PatchSelector", "> Open file  : " + pdzZipPath);
+					Log.d(TAG, "> Open file  : " + pdzZipPath);
 					getLatestVersion(); // check the version of pdz we just clicked on
 					process();
 				}
@@ -142,18 +143,18 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 		try
 		{
 			InputStream attachment = getContentResolver().openInputStream(data);
-			if (attachment == null)
-				Log.e("onCreate", "cannot access mail attachment");
-			else
-			{
-				FileOutputStream tmp = new FileOutputStream(Environment.getExternalStorageDirectory().toString() + "/temp.pdz");
-				byte []buffer = new byte[1024];
-				while (attachment.read(buffer) > 0)
-					tmp.write(buffer);
-				tmp.close();
-				attachment.close();
+			if (attachment == null) {
+				Log.e(TAG, "processContentUri() cannot access mail attachment");
+				return;
 			}
-			pdzZipPath = Environment.getExternalStorageDirectory().toString() + "/temp.pdz";
+			String tempPdzPath = getExternalFilesDir(null).toString() + "/temp.pdz";
+			FileOutputStream tmp = new FileOutputStream(tempPdzPath);
+			byte []buffer = new byte[1024];
+			while (attachment.read(buffer) > 0)
+				tmp.write(buffer);
+			tmp.close();
+			attachment.close();
+			pdzZipPath = tempPdzPath;
 			getLatestVersion(); // check the version of pdz we just clicked on
 			process();
 		}
@@ -202,12 +203,12 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 	private void extract() {
 		// TODO Auto-generated method stub
 		try {
-			List<File> listMain = IoUtils.extractZipResource(new FileInputStream(pdzZipPath), new File(Environment.getExternalStorageDirectory().toString() + "/PdDroidParty"), true);
+			List<File> listMain = IoUtils.extractZipResource(new FileInputStream(pdzZipPath), new File(getExternalFilesDir(null).toString()), true);
 			 if (listMain.size() != 0) {
 				 for (File file : listMain) {
 					 Log.d("Extracting", file.getAbsolutePath());
 				 }
-				 launchDroidParty(Environment.getExternalStorageDirectory().toString() + "/PdDroidParty/" + folderName + "/" + dpMainfileName, true);
+				 launchDroidParty(getExternalFilesDir(null).toString() + folderName + "/" + dpMainfileName, true);
 			 }
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
@@ -218,7 +219,7 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 
 	private boolean getDiskVersion() {
 		// TODO Auto-generated method stub
-		List<File> listpdMain = IoUtils.find(new File(Environment.getExternalStorageDirectory().toString() + "/PdDroidParty" + "/" + folderName), ".*droidparty_main\\.pd$");
+		List<File> listpdMain = IoUtils.find(new File(getExternalFilesDir(null).toString() + "/" + folderName), ".*droidparty_main\\.pd$");
 		if (listpdMain.size() != 0) {
 			for (File f : listpdMain) {
 				Log.d("DiskFile", f.getAbsolutePath());
@@ -253,7 +254,7 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 
 	private void getLatestVersion() {
 		// TODO Auto-generated method stub
-		File temp = new File(Environment.getExternalStorageDirectory().toString() + "/pdTemp");
+		File temp = new File(getExternalFilesDir(null).toString() + "/pdTemp");
 		try {
 			List<File> listMain = IoUtils.extractZipResource(new FileInputStream(pdzZipPath), temp, true);
 			if (listMain.size() != 0) {
@@ -363,7 +364,7 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 			IoUtils.extractZipResource(res.openRawResource(R.raw.abstractions), libDir, true);
 			// IoUtils.extractZipResource(res.openRawResource(Properties.hasArmeabiV7a ? R.raw.externals_v7a : R.raw.externals), libDir, true);
 		} catch (IOException e) {
-			Log.e("PatchSelector", e.toString());
+			Log.e(TAG, e.toString());
 		}
 		PdBase.addToSearchPath(libDir.getAbsolutePath());
 
@@ -371,10 +372,10 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 	}
 
 	private void searchPath(String path) {
-		Log.e("PatchSelector", "search path:" + path);
+		Log.e(TAG, "search path:" + path);
 		List<File> list = IoUtils.find(new File(path), ".*droidparty_main\\.pd$");
 
-		Log.e("PdDroidParty", "PatchSelector.initPd: " + list.toString());
+		Log.e(TAG, "patches list: " + list.toString());
 		for (File f : list) {
 			String[] parts = f.getParent().split("/");
 			// exclude generic patch directories found in apps based on PdDroidParty
@@ -391,8 +392,8 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 		for (File d : dirs) {
 			if (d != null) {
 				searchPath(d.toString());
-				String path = d.getParent().replace("/Android/data/", "").replace(getPackageName(), "") + "/PdDroidParty";
-				searchPath(path);
+				//String path = d.getParent().replace("/Android/data/", "").replace(getPackageName(), "") + "/PdDroidParty";
+				//searchPath(path);
 			}
 		}
 
@@ -444,11 +445,11 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 				editor.putLong("installed", installed);
 				editor.apply();
 				isNewInstall = true;
-				Log.d("PdDroidParty", "new installation");
+				Log.d(TAG, "new installation");
 			}
 			if(lastInstalled == 0) {
 				isFirstRun = true;
-				Log.d("PdDroidParty", "very first run!");
+				Log.d(TAG, "very first run!");
 			}
 		} catch(Exception e) {}
 	}
@@ -456,17 +457,17 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 	private void copyDemos() {
 		List<File> demosFiles = null;
 		try {
-			Log.d("PdDroidParty", "getExternalFilesDir: " + getExternalFilesDir(null).toPath());
+			Log.d(TAG, "getExternalFilesDir: " + getExternalFilesDir(null).toPath());
 			InputStream demos = getResources().openRawResource(R.raw.demos);
 			demosFiles = IoUtils.extractZipResource(demos, getExternalFilesDir(null), false);
 		} catch (Exception e) {
 			// do nothing
-			Log.d("PdDroidParty", "error extracting demos: " + e.toString());
+			Log.d(TAG, "error extracting demos: " + e.toString());
 			return;
 		}
 		if (demosFiles != null && demosFiles.size() != 0) {
 			for (File file : demosFiles) {
-				Log.d("PdDroidParty", "extracted: " + file.getAbsolutePath());
+				Log.d(TAG, "extracted: " + file.getAbsolutePath());
 			}
 		}
 	}
