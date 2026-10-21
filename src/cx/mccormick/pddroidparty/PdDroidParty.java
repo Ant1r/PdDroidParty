@@ -459,7 +459,7 @@ public class PdDroidParty extends AppCompatActivity implements SharedPreferences
 		try {
 			dollarzero = PdBase.openPatch(path.toString());
 		} catch (IOException e) {
-			post(e.toString() + "; exiting now");
+			Log.e(TAG, "startPd() opening " + path.toString() + ": " + e.toString() + "; exiting now");
 			finish();
 		}
 		patchview.buildUI(atomlines);
