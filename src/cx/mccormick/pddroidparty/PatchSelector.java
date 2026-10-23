@@ -20,6 +20,9 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 
 import org.puredata.core.PdBase;
 import org.puredata.core.utils.IoUtils;
@@ -73,7 +76,6 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 	private String folderName;
 	private float version;
 	private float latestVersion;
-	ProgressDialog progress, httpProgress;
 	Handler handler;
 	private String dpMainfileName;
 	private static long SPLASHTIME = 2000;
@@ -92,13 +94,29 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 		res = getResources();
 		handler = new Handler();
 		checkIsFirstRun();
+		Log.d(TAG, "Pd version: " + PdVersionString.get());
 		// if we have a baked patch, jump straight into Pd initialisation
 		if (testForBakedPatch()) {
-			doSplash();
+			runBackedPatch();
 		} else {
-			initGui();
+			if (Build.VERSION.SDK_INT >= 23 && Build.VERSION.SDK_INT < 34 && ContextCompat.checkSelfPermission(PatchSelector.this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
+				// ask for permission to access it; then runSelectorGui()
+				requestPermissions(new String[] {Manifest.permission.READ_EXTERNAL_STORAGE}, READ_EXTERNAL_STORAGE_PERMISSION_CODE);
+			} else {
+				runSelectorGui();
+			}
 		}
-		Log.d(TAG, "Pd version: " + PdVersionString.get());
+	}
+
+	@Override
+	public void onRequestPermissionsResult(final int requestCode, final String[] permissions, final int[] grantResults) {
+		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+		if (requestCode == READ_EXTERNAL_STORAGE_PERMISSION_CODE) {
+			if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+				// nothing to do
+			}
+			runSelectorGui();
+		}
 	}
 
 	@Override
@@ -124,6 +142,7 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 				Log.d(TAG, "> Got data   : " + data);
 				if(data.toString().contains("http")) {
 					new DownloadFileFromURL().execute(data.toString());
+					return;
 				}
 				String scheme = data.getScheme();
 				if (ContentResolver.SCHEME_CONTENT.equals(scheme)) { // if the URI is of type content://
@@ -139,18 +158,6 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 			}
 		}
 		return;
-	}
-
-	@Override
-	protected Dialog onCreateDialog(int id) {
-		httpProgress = new ProgressDialog(this);
-		httpProgress.setMessage("Downloading file. Please wait...");
-		httpProgress.setIndeterminate(false);
-		httpProgress.setMax(100);
-		httpProgress.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-		httpProgress.setCancelable(true);
-		httpProgress.show();
-		return httpProgress;
 	}
 
 	private void processContentUri(Uri data) {
@@ -177,7 +184,6 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
 	}
 
 	private void process() {
@@ -186,18 +192,10 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 		} else {
 			String Latestversion = Float.toString(latestVersion);
 			String Thisversion = Float.toString(version);
-			if(Latestversion.contains(".0"));
-			{
-				Latestversion = Latestversion.substring(0, Latestversion.lastIndexOf("."));
-			}
-			if(Thisversion.contains(".0"));
-			{
-				Thisversion = Thisversion.substring(0, Thisversion.lastIndexOf("."));
-			}
 			new AlertDialog.Builder(PatchSelector.this)
 				.setTitle("New .pdz File")
-				.setMessage("Would you like to replace " + Thisversion
-					+ " with latest version " + Latestversion
+				.setMessage("Would you like to replace current version " + Thisversion
+					+ " with version " + Latestversion
 					+ " ?")
 				.setCancelable(false)
 				.setPositiveButton("Okay", new OnClickListener() {
@@ -325,10 +323,6 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 	private void closePd() {
 		// TODO Auto-generated method stub
 		Toast.makeText(PatchSelector.this, "PdDroidParty: File Format not Supported, or bad file", Toast.LENGTH_LONG).show();
-		if(progress != null) {
-			progress.dismiss();
-			progress = null;
-		}
 		finish();
 	}
 
@@ -346,10 +340,6 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 	}
 
 	private void launchDroidParty(String path, boolean fromPatchSelector) {
-		if(progress != null){
-			progress.dismiss();
-			progress = null;
-		}
 		Intent intent = new Intent(this, PdDroidParty.class);
 		intent.putExtra(PdDroidParty.PATCH, path);
 		intent.putExtra(PdDroidParty.FROM_SELECTOR, fromPatchSelector);
@@ -414,52 +404,6 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 		}
 	}
 
-	private void buildPatchList() {
-		/*File[] dirs = ContextCompat.getExternalFilesDirs(getApplicationContext(), null);
-
-		for (File d : dirs) {
-			if (d != null) {
-				searchPath(d.toString());
-				//String path = d.getParent().replace("/Android/data/", "").replace(getPackageName(), "") + "/PdDroidParty";
-				//searchPath(path);
-			}
-		}*/
-		searchPath(patchesPath);
-
-		ArrayList<String> keyList = new ArrayList<String>(patches.keySet());
-		Collections.sort(keyList, new Comparator<String>() {
-			public int compare(String a, String b) {
-				return a.toLowerCase().compareTo(b.toLowerCase());
-			}
-		});
-		final ArrayAdapter<String> adapter = new ArrayAdapter<String>(PatchSelector.this, android.R.layout.simple_list_item_1, keyList);
-		handler.post(new Runnable() {
-			@Override
-			public void run() {
-				patchList.setAdapter(adapter);
-				if (progress != null) {
-					try {
-						progress.dismiss();
-					} catch (Exception e) {
-						// nothing
-					}
-				}
-			}
-		});
-	}
-
-	@Override
-	public void onRequestPermissionsResult(final int requestCode, final String[] permissions, final int[] grantResults) {
-		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-		if (requestCode == READ_EXTERNAL_STORAGE_PERMISSION_CODE) {
-			if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-				buildPatchList();
-			} else {
-				// they'll just see an empty patch list
-			}
-		}
-	}
-
 	private void checkIsFirstRun() {
 		if(isFirstRun || isNewInstall) return;
 		try {
@@ -501,47 +445,7 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 		}
 	}
 
-	private void initPd(boolean backed) {
-		if (!backed) {
-			progress = new ProgressDialog(PatchSelector.this);
-			progress.setMessage("Finding patches...");
-			progress.setCancelable(false);
-			progress.setIndeterminate(true);
-			progress.show();
-		}
-
-		new Thread() {
-			@Override
-			public void run() {
-				if(backed) {
-					long start = System.currentTimeMillis();
-					String bakedpatch = unpackBakedPatch();
-					long elapsed = System.currentTimeMillis() - start;
-					if (elapsed < SPLASHTIME) {
-						try {
-							this.sleep(SPLASHTIME - elapsed);
-						} catch (Exception e) {}
-					}
-					if (bakedpatch != null) {
-						launchDroidParty(bakedpatch, false);
-					}
-					finish();
-				}
-				else {
-					if(isFirstRun) copyDemos();
-					// check if we have permission to acess external storage yet
-					if (Build.VERSION.SDK_INT >= 23 && Build.VERSION.SDK_INT < 34 && ContextCompat.checkSelfPermission(PatchSelector.this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
-						// ask for permission to access it
-						requestPermissions(new String[] {Manifest.permission.READ_EXTERNAL_STORAGE}, READ_EXTERNAL_STORAGE_PERMISSION_CODE);
-					} else {
-						buildPatchList();
-					}
-				}
-			};
-		}.start();
-	}
-
-	private void doSplash() {
+	private void runBackedPatch() {
 		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 		// Create a new ImageView
 		ImageView imageView = new ImageView(this);
@@ -556,18 +460,60 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 			// Set the ImageView as the content view for the Activity
 			setContentView(imageView);
 		}
-		// initialise Pd without a progress thing
-		initPd(true);
+		// Unpack the patch in a separate thread, then run it
+		ExecutorService executor = Executors.newSingleThreadExecutor();
+		executor.execute(() -> {
+			long start = System.currentTimeMillis();
+			String bakedpatch = unpackBakedPatch();
+			long elapsed = System.currentTimeMillis() - start;
+			if (elapsed < SPLASHTIME) {
+				try {
+					Thread.sleep(SPLASHTIME - elapsed);
+				} catch (Exception e) {}
+			}
+			if (bakedpatch != null) {
+				launchDroidParty(bakedpatch, false);
+			}
+			finish();
+		});
 	}
 
-	private void initGui() {
+	private void runSelectorGui() {
 		setContentView(R.layout.patch_selector);
 		patchList = (ListView) findViewById(R.id.patch_selector);
-		initPd(false);
+		//initPd(false);
 		patchList.setOnItemClickListener(this);
+		ProgressDialog progress = new ProgressDialog(PatchSelector.this);
+		progress.setMessage("Finding patches...");
+		progress.setCancelable(false);
+		progress.setIndeterminate(true);
+		progress.show();
+		ExecutorService executor = Executors.newSingleThreadExecutor();
+		executor.execute(() -> {
+			if(isFirstRun) copyDemos();
+			searchPath(patchesPath);
+			ArrayList<String> keyList = new ArrayList<String>(patches.keySet());
+			Collections.sort(keyList, new Comparator<String>() {
+				public int compare(String a, String b) {
+					return a.toLowerCase().compareTo(b.toLowerCase());
+				}
+			});
+			final ArrayAdapter<String> adapter = new ArrayAdapter<String>(PatchSelector.this, android.R.layout.simple_list_item_1, keyList);
+
+			handler.post(() -> {
+				patchList.setAdapter(adapter);
+				try {
+					progress.dismiss();
+				} catch (Exception e) {
+					// nothing
+				}
+			});
+		});
 	}
 
 	class DownloadFileFromURL extends AsyncTask<String, String, String> {
+
+		ProgressDialog progressDialog;
 
 		/**
 		 * Before starting background thread
@@ -576,7 +522,13 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 		@Override
 		protected void onPreExecute() {
 			super.onPreExecute();
-			showDialog(0);
+			progressDialog = new ProgressDialog(PatchSelector.this);
+			progressDialog.setMessage("Downloading file. Please wait...");
+			progressDialog.setIndeterminate(false);
+			progressDialog.setMax(100);
+			progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+			progressDialog.setCancelable(true);
+			progressDialog.show();
 		}
 
 		/**
@@ -628,13 +580,14 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 
 		protected void onProgressUpdate(String... progress) {
 			// setting progress percentage
-			httpProgress.setProgress(Integer.parseInt(progress[0]));
+			progressDialog.setProgress(Integer.parseInt(progress[0]));
 		}
 
 		@Override
 		protected void onPostExecute(String file_url) {
 			// dismiss the dialog after the file was downloaded
-			dismissDialog(0);
+			progressDialog.dismiss();
+			progressDialog = null;
 			pdzZipPath = patchesPath + "/temp.pdz";
 			getLatestVersion();
 			process();
