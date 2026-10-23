@@ -51,6 +51,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
@@ -60,7 +61,7 @@ import android.widget.Toast;
 import com.larvalabs.svgandroid.SVG;
 import com.larvalabs.svgandroid.SVGParser;
 
-public class PatchSelector extends Activity implements OnItemClickListener {
+public class PatchSelector extends Activity {
 
 	private ListView patchList;
 	private final Map<String, String> patches = new HashMap<String, String>();
@@ -235,13 +236,6 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 	}
 
 	@Override
-	public void onItemClick(AdapterView<?> arg0, View v, int position, long id) {
-		TextView item = (TextView) v;
-		String name = item.getText().toString();
-		launchDroidParty(patches.get(name), true);
-	}
-
-	@Override
 	public void finish() {
 		Log.d(TAG, "finish()");
 		super.finish();
@@ -388,7 +382,24 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 	private void runSelectorGui() {
 		setContentView(R.layout.patch_selector);
 		patchList = (ListView) findViewById(R.id.patch_selector);
-		patchList.setOnItemClickListener(this);
+		patchList.setOnItemClickListener(new OnItemClickListener() {
+			@Override
+			public void onItemClick(AdapterView<?> arg0, View v, int position, long id) {
+				TextView item = (TextView) v;
+				String name = item.getText().toString();
+				launchDroidParty(patches.get(name), true);
+			}
+		});
+		patchList.setOnItemLongClickListener(new OnItemLongClickListener() {
+			@Override
+			public boolean onItemLongClick(AdapterView<?> arg0, View v, int position, long id) {
+				TextView item = (TextView) v;
+				String name = item.getText().toString();
+				//launchDroidParty(patches.get(name), true);
+				Log.d(TAG, "long click on: " + name);
+				return true;
+			}
+		});
 		ProgressDialog progress = new ProgressDialog(PatchSelector.this);
 		progress.setMessage("Finding patches...");
 		progress.setCancelable(false);
