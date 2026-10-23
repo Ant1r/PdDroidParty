@@ -63,12 +63,9 @@ import com.larvalabs.svgandroid.SVGParser;
 
 public class PatchSelector extends Activity {
 
-	private ListView patchList;
-	private final Map<String, String> patches = new HashMap<String, String>();
 	Resources res = null;
 	Handler handler;
 	private static long SPLASHTIME = 2000;
-	private boolean foundmainPd = false;
 	private int READ_EXTERNAL_STORAGE_PERMISSION_CODE = 54035940;
 	private boolean isFirstRun = false;
 	private boolean isNewInstall = false;
@@ -290,7 +287,7 @@ public class PatchSelector extends Activity {
 		PdBase.addToSearchPath(libDir.getAbsolutePath());
 	}
 
-	private void searchPath(String path) {
+	private void searchPath(String path, Map<String, String> patches) {
 		Log.e(TAG, "search path:" + path);
 		List<File> list = IoUtils.find(new File(path), ".*droidparty_main\\.pd$");
 
@@ -381,7 +378,9 @@ public class PatchSelector extends Activity {
 
 	private void runSelectorGui() {
 		setContentView(R.layout.patch_selector);
-		patchList = (ListView) findViewById(R.id.patch_selector);
+		ListView patchList = (ListView) findViewById(R.id.patch_selector);
+		Map<String, String> patches = new HashMap<String, String>();
+
 		patchList.setOnItemClickListener(new OnItemClickListener() {
 			@Override
 			public void onItemClick(AdapterView<?> arg0, View v, int position, long id) {
@@ -395,7 +394,6 @@ public class PatchSelector extends Activity {
 			public boolean onItemLongClick(AdapterView<?> arg0, View v, int position, long id) {
 				TextView item = (TextView) v;
 				String name = item.getText().toString();
-				//launchDroidParty(patches.get(name), true);
 				Log.d(TAG, "long click on: " + name);
 				return true;
 			}
@@ -409,7 +407,7 @@ public class PatchSelector extends Activity {
 		executor.execute(() -> {
 			addBundledAbstractions();
 			if(isFirstRun || isNewInstall) copyDemos();
-			searchPath(patchesPath);
+			searchPath(patchesPath, patches);
 			ArrayList<String> keyList = new ArrayList<String>(patches.keySet());
 			Collections.sort(keyList, new Comparator<String>() {
 				public int compare(String a, String b) {
