@@ -2,18 +2,11 @@ package cx.mccormick.pddroidparty;
 
 /* Based on SceneSelection code by Peter Brinkmann (thanks!) */
 
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.URL;
-import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -23,6 +16,8 @@ import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
+import java.nio.file.Files;
+import static java.nio.file.StandardCopyOption.*;
 
 import org.puredata.core.PdBase;
 import org.puredata.core.utils.IoUtils;
@@ -48,14 +43,12 @@ import android.content.pm.PackageManager;
 import android.Manifest;
 import android.graphics.Color;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Build;
 import android.util.Log;
 import android.view.View;
-import android.webkit.MimeTypeMap;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
@@ -72,12 +65,7 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 	private ListView patchList;
 	private final Map<String, String> patches = new HashMap<String, String>();
 	Resources res = null;
-	private String pdzZipPath;
-	private String folderName;
-	private float version;
-	private float latestVersion;
 	Handler handler;
-	private String dpMainfileName;
 	private static long SPLASHTIME = 2000;
 	private boolean foundmainPd = false;
 	private int READ_EXTERNAL_STORAGE_PERMISSION_CODE = 54035940;
@@ -90,7 +78,7 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		patchesPath = getExternalFilesDir(null).toString();
+		patchesPath = getExternalFilesDir(null).getPath() + "/";
 		res = getResources();
 		handler = new Handler();
 		checkIsFirstRun();
@@ -141,7 +129,13 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 			if (data != null) {
 				Log.d(TAG, "> Got data   : " + data);
 				if(data.toString().contains("http")) {
-					new DownloadFileFromURL().execute(data.toString());
+					new PatchUtils.DownloadFileFromURL(this, patchesPath + "temp.pdz") {
+						@Override
+						protected void onPostExecute(String zipFile) {
+							super.onPostExecute(zipFile);
+							processZip(zipFile);
+						}
+					}.execute(data.toString());
 					return;
 				}
 				String scheme = data.getScheme();
@@ -150,10 +144,8 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 					processContentUri(data);
 				} else {
 					// handle as file uri
-					pdzZipPath = data.getPath();
-					Log.d(TAG, "> Open file  : " + pdzZipPath);
-					getLatestVersion(); // check the version of pdz we just clicked on
-					process();
+					Log.d(TAG, "> Open file  : " + data.getPath());
+					processZip(data.getPath());
 				}
 			}
 		}
@@ -168,16 +160,14 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 				Log.e(TAG, "processContentUri() cannot access mail attachment");
 				return;
 			}
-			String tempPdzPath = patchesPath + "/temp.pdz";
+			String tempPdzPath = patchesPath + "temp.pdz";
 			FileOutputStream tmp = new FileOutputStream(tempPdzPath);
 			byte []buffer = new byte[1024];
 			while (attachment.read(buffer) > 0)
 				tmp.write(buffer);
 			tmp.close();
 			attachment.close();
-			pdzZipPath = tempPdzPath;
-			getLatestVersion(); // check the version of pdz we just clicked on
-			process();
+			processZip(tempPdzPath);
 		}
 		catch (FileNotFoundException e) {
 			e.printStackTrace();
@@ -186,138 +176,56 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 		}
 	}
 
-	private void process() {
-		if (!getDiskVersion()) {
-			extract();
-		} else {
-			String Latestversion = Float.toString(latestVersion);
-			String Thisversion = Float.toString(version);
-			new AlertDialog.Builder(PatchSelector.this)
-				.setTitle("New .pdz File")
-				.setMessage("Would you like to replace current version " + Thisversion
-					+ " with version " + Latestversion
-					+ " ?")
-				.setCancelable(false)
-				.setPositiveButton("Okay", new OnClickListener() {
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						dialog.dismiss();
-						extract();
-					}
-				})
-				.setNegativeButton("Cancel", new OnClickListener() {
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						dialog.dismiss();
-						File zipfile = new File(pdzZipPath);
-						zipfile.delete();
-						launchDroidParty(patchesPath + "/" + folderName + "/" + dpMainfileName, true);
-						finish();
-					}
-				})
-				.show();
+	private void processZip(String zipPath) {
+		String tempPath = patchesPath + "pdTemp/";
+		PatchUtils.deleteDirectory(new File(tempPath));
+		String patchName = PatchUtils.extractZipTo(zipPath, tempPath);
+		new File(zipPath).delete();
+		if(patchName == null) return;
+		String installedVersion = PatchUtils.getPatchVersion(patchesPath + patchName);
+		if (installedVersion == null) { // patch isn't installed yet
+			try {
+				Files.move(new File(tempPath + patchName).toPath(), new File(patchesPath + patchName).toPath(), REPLACE_EXISTING);
+				launchDroidParty(patchesPath + patchName, true);
+			} catch(Exception e) {}
+			finish();
+			return;
 		}
-	}
 
-	private void extract() {
-		// TODO Auto-generated method stub
-		try {
-			List<File> listMain = IoUtils.extractZipResource(new FileInputStream(pdzZipPath), new File(patchesPath), true);
-			if (listMain.size() != 0) {
-				for (File file : listMain) {
-					Log.d(TAG, "extracting: " + file.getAbsolutePath());
-				}
-				File zipfile = new File(pdzZipPath);
-				zipfile.delete();
-				launchDroidParty(patchesPath + "/" + folderName + "/" + dpMainfileName, true);
-				finish();
-			 }
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-			Log.e(TAG, "extract() FileNotFoundException: " + e);
-		} catch (IOException e) {
-			e.printStackTrace();
-			Log.e(TAG, "extract() IOException: " + e);
+		String zipVersion = PatchUtils.getPatchVersion(tempPath + patchName);
+		if(zipVersion == null) {
+			finish();
+			return;
 		}
-	}
 
-	private boolean getDiskVersion() {
-		// TODO Auto-generated method stub
-		List<File> listpdMain = IoUtils.find(new File(patchesPath + "/" + folderName), ".*droidparty_main\\.pd$");
-		if (listpdMain.size() != 0) {
-			for (File f : listpdMain) {
-				Log.d(TAG, "disk file:" + f.getAbsolutePath());
-				try {
-					InputStream is = new FileInputStream(f);
-					BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-					String line;
-					while ((line = reader.readLine()) != null) {
-						String version;
-						if (line.contains(" version: ")) {
-							Log.d(TAG, "VersionLine:" + line);
-							version = line.substring(line.lastIndexOf(":") + 1, line.length() - 1);
-							this.version = Float.parseFloat(version);
-							break;
-						} else {
-							version = "0";
-							this.version = Float.parseFloat(version);
-						}
-					}
-					reader.close();
-					Log.d(TAG, "disk version: " + version);
-					Toast.makeText(PatchSelector.this, "DiskVersion" + version + "", Toast.LENGTH_SHORT).show();
-				} catch (Exception e) {
-					e.printStackTrace();
-					return false;
+		new AlertDialog.Builder(PatchSelector.this)
+			.setTitle("New .pdz File")
+			.setMessage("Would you like to replace installed version " + installedVersion
+				+ " with version " + zipVersion
+				+ " ?")
+			.setCancelable(false)
+			.setPositiveButton("Okay", new OnClickListener() {
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					dialog.dismiss();
+					// move temp to final location
+					try {
+						PatchUtils.deleteDirectory(new File(patchesPath + patchName));
+						Files.move(new File(tempPath + patchName).toPath(), new File(patchesPath + patchName).toPath(), REPLACE_EXISTING);
+						launchDroidParty(patchesPath + patchName, true);
+					} catch(Exception e) {}
+					finish();
 				}
-			}
-		}
-		return listpdMain.size() != 0;
-	}
-
-	private void getLatestVersion() {
-		// TODO Auto-generated method stub
-		File temp = new File(patchesPath + "/pdTemp");
-		try {
-			List<File> listMain = IoUtils.extractZipResource(new FileInputStream(pdzZipPath), temp, true);
-			if (listMain.size() != 0) {
-				for (File f : listMain) {
-					if(f.isDirectory())
-						folderName = f.getName();
-					if (f.getAbsolutePath().toLowerCase().contains("droidparty_main.pd")) {
-						foundmainPd = true;
-						dpMainfileName = f.getName();
-						InputStream is = new FileInputStream(f);
-						BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-						String line;
-						while ((line = reader.readLine()) != null) {
-							String version;
-							if (line.contains(" version: ")) {
-								Log.d(TAG, "latestVersion line: " + line);
-								version = line.substring(line.lastIndexOf(":") + 1, line.length() - 1);
-								this.latestVersion = Float.parseFloat(version);
-								break;
-							} else {
-								version = "0";
-								this.latestVersion = Float.parseFloat(version);
-							}
-
-						}
-						reader.close();
-						Log.d(TAG, "latestVersion: " + latestVersion);
-						break;
-					}
+			})
+			.setNegativeButton("Cancel", new OnClickListener() {
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					dialog.dismiss();
+					launchDroidParty(patchesPath + patchName, true);
+					finish();
 				}
-				if(!foundmainPd) {
-					closePd();
-				}
-			}
-			else {
-				closePd();
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+			})
+			.show();
 	}
 
 	private void closePd() {
@@ -340,8 +248,10 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 	}
 
 	private void launchDroidParty(String path, boolean fromPatchSelector) {
+		String pdMain = PatchUtils.getMainPatchPath(path).getPath();
+		if(pdMain == null) return;
 		Intent intent = new Intent(this, PdDroidParty.class);
-		intent.putExtra(PdDroidParty.PATCH, path);
+		intent.putExtra(PdDroidParty.PATCH, pdMain);
 		intent.putExtra(PdDroidParty.FROM_SELECTOR, fromPatchSelector);
 		startActivity(intent);
 	}
@@ -352,31 +262,30 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 
 	private String unpackBakedPatch() {
 		// if we have a patch zip
-		if (testForBakedPatch()) {
-			// where we will be storing the patch on the sdcard
-			String basedir = patchesPath;
-			// version file for the existing patch
-			File version = new File(basedir + "/patch/VERSION-" + res.getInteger(res.getIdentifier("revno", "integer", getPackageName())));
-			// if the version file does not exist
-			if (!version.exists()) {
-				try {
-					IoUtils.extractZipResource(getResources().openRawResource(res.getIdentifier("patch", "raw", getPackageName())), new File(basedir), false);
-				} catch (IOException e) {
-					// do nothing
-					return null;
-				}
+		if (! testForBakedPatch()) return null;
+		// where we will be storing the patch on the sdcard
+		String basedir = patchesPath;
+		// version file for the existing patch
+		File version = new File(basedir + "patch/VERSION-" + res.getInteger(res.getIdentifier("revno", "integer", getPackageName())));
+		// if the version file does not exist
+		if (!version.exists()) {
+			try {
+				IoUtils.extractZipResource(getResources().openRawResource(res.getIdentifier("patch", "raw", getPackageName())), new File(basedir), false);
+			} catch (IOException e) {
+				// do nothing
+				return null;
 			}
-			//PdBase.addToSearchPath(libDir.getAbsolutePath());
-			PdBase.addToSearchPath(basedir + "/patch");
-			// also add the recordings directory
-			(new File(basedir, "recordings")).mkdirs();
-			// also add the safefiles directory
-			(new File(basedir, "savefiles")).mkdirs();
-			// return the patch path to launch Pd
-			return basedir + "/patch/droidparty_main.pd";
 		}
+		PdBase.addToSearchPath(basedir + "patch");
+		// also add the recordings directory
+		(new File(basedir, "recordings")).mkdirs();
+		// also add the safefiles directory
+		(new File(basedir, "savefiles")).mkdirs();
+		// return the patch path to launch Pd
+		return basedir;
+	}
 
-		// add abstractions and externals zips
+	private void addBundledAbstractions() {
 		Resources res = getResources();
 		File libDir = getFilesDir();
 		try {
@@ -385,8 +294,6 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 			Log.e(TAG, e.toString());
 		}
 		PdBase.addToSearchPath(libDir.getAbsolutePath());
-
-		return null;
 	}
 
 	private void searchPath(String path) {
@@ -398,8 +305,8 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 			String[] parts = f.getParent().split("/");
 			// exclude generic patch directories found in apps based on PdDroidParty
 			if (!parts[parts.length - 1].equals("patch")) {
-				patches.put(parts[parts.length - 1], f.getAbsolutePath());
-				Log.d(TAG, "AbsPath: " + f.getAbsolutePath());
+				patches.put(parts[parts.length - 1], f.getParent());
+				Log.d(TAG, "AbsPath: " + f.getParent());
 			}
 		}
 	}
@@ -438,11 +345,11 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 			Log.d(TAG, "error extracting demos: " + e.toString());
 			return;
 		}
-		if (demosFiles != null && demosFiles.size() != 0) {
+		/*if (demosFiles != null && demosFiles.size() != 0) {
 			for (File file : demosFiles) {
 				Log.d(TAG, "extracted: " + file.getAbsolutePath());
 			}
-		}
+		}*/
 	}
 
 	private void runBackedPatch() {
@@ -481,7 +388,6 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 	private void runSelectorGui() {
 		setContentView(R.layout.patch_selector);
 		patchList = (ListView) findViewById(R.id.patch_selector);
-		//initPd(false);
 		patchList.setOnItemClickListener(this);
 		ProgressDialog progress = new ProgressDialog(PatchSelector.this);
 		progress.setMessage("Finding patches...");
@@ -490,7 +396,8 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 		progress.show();
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 		executor.execute(() -> {
-			if(isFirstRun) copyDemos();
+			addBundledAbstractions();
+			if(isFirstRun || isNewInstall) copyDemos();
 			searchPath(patchesPath);
 			ArrayList<String> keyList = new ArrayList<String>(patches.keySet());
 			Collections.sort(keyList, new Comparator<String>() {
@@ -509,88 +416,5 @@ public class PatchSelector extends Activity implements OnItemClickListener {
 				}
 			});
 		});
-	}
-
-	class DownloadFileFromURL extends AsyncTask<String, String, String> {
-
-		ProgressDialog progressDialog;
-
-		/**
-		 * Before starting background thread
-		 * Show Progress Bar Dialog
-		 * */
-		@Override
-		protected void onPreExecute() {
-			super.onPreExecute();
-			progressDialog = new ProgressDialog(PatchSelector.this);
-			progressDialog.setMessage("Downloading file. Please wait...");
-			progressDialog.setIndeterminate(false);
-			progressDialog.setMax(100);
-			progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-			progressDialog.setCancelable(true);
-			progressDialog.show();
-		}
-
-		/**
-		 * Downloading file in background thread
-		 * */
-		@Override
-		protected String doInBackground(String... f_url) {
-			int count;
-			try {
-				URL url = new URL(f_url[0]);
-				URLConnection conection = url.openConnection();
-				conection.connect();
-				// getting file length
-				int lenghtOfFile = conection.getContentLength();
-
-				// input stream to read file - with 8k buffer
-				InputStream input = new BufferedInputStream(url.openStream(), 8192);
-
-				// Output stream to write file
-				OutputStream output = new FileOutputStream(patchesPath + "/temp.pdz");
-
-				byte data[] = new byte[1024];
-
-				long total = 0;
-
-				while ((count = input.read(data)) != -1) {
-					total += count;
-					// publishing the progress....
-					// After this onProgressUpdate will be called
-					publishProgress("" + (int)((total * 100) / lenghtOfFile));
-
-					// writing data to file
-					output.write(data, 0, count);
-				}
-
-				// flushing output
-				output.flush();
-
-				// closing streams
-				output.close();
-				input.close();
-
-			} catch (Exception e) {
-				Log.e("Error: ", e.getMessage());
-			}
-
-			return null;
-		}
-
-		protected void onProgressUpdate(String... progress) {
-			// setting progress percentage
-			progressDialog.setProgress(Integer.parseInt(progress[0]));
-		}
-
-		@Override
-		protected void onPostExecute(String file_url) {
-			// dismiss the dialog after the file was downloaded
-			progressDialog.dismiss();
-			progressDialog = null;
-			pdzZipPath = patchesPath + "/temp.pdz";
-			getLatestVersion();
-			process();
-		}
 	}
 }
