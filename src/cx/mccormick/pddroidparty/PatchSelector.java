@@ -291,13 +291,13 @@ public class PatchSelector extends Activity {
 		Log.e(TAG, "search path:" + path);
 		List<File> list = IoUtils.find(new File(path), ".*droidparty_main\\.pd$");
 
-		Log.e(TAG, "patches list: " + list.toString());
+		//Log.e(TAG, "patches list: " + list.toString());
 		for (File f : list) {
 			String[] parts = f.getParent().split("/");
 			// exclude generic patch directories found in apps based on PdDroidParty
 			if (!parts[parts.length - 1].equals("patch")) {
 				patches.put(parts[parts.length - 1], f.getParent());
-				Log.d(TAG, "AbsPath: " + f.getParent());
+				//Log.d(TAG, "AbsPath: " + f.getParent());
 			}
 		}
 	}
@@ -379,6 +379,7 @@ public class PatchSelector extends Activity {
 	private void runSelectorGui() {
 		setContentView(R.layout.patch_selector);
 		ListView patchList = (ListView) findViewById(R.id.patch_selector);
+		/*
 		Map<String, String> patches = new HashMap<String, String>();
 
 		patchList.setOnItemClickListener(new OnItemClickListener() {
@@ -424,6 +425,15 @@ public class PatchSelector extends Activity {
 					// nothing
 				}
 			});
-		});
+		});*/
+		CatalogView catalog = new CatalogView(patchesPath){
+			@Override
+			public void clikedOn(String patchDir) {
+				launchDroidParty(patchDir, true);
+			}
+		};
+		catalog.scan();
+		catalog.print();
+		catalog.setup(PatchSelector.this, patchList);
 	}
 }
