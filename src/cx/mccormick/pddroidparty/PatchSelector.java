@@ -7,10 +7,6 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
@@ -24,8 +20,6 @@ import org.puredata.core.utils.IoUtils;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.Dialog;
-import android.app.ProgressDialog;
 import android.content.ContentResolver;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
@@ -44,18 +38,13 @@ import android.Manifest;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Build;
 import android.util.Log;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.AdapterView.OnItemClickListener;
-import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.larvalabs.svgandroid.SVG;
@@ -287,21 +276,6 @@ public class PatchSelector extends Activity {
 		PdBase.addToSearchPath(libDir.getAbsolutePath());
 	}
 
-	private void searchPath(String path, Map<String, String> patches) {
-		Log.e(TAG, "search path:" + path);
-		List<File> list = IoUtils.find(new File(path), ".*droidparty_main\\.pd$");
-
-		//Log.e(TAG, "patches list: " + list.toString());
-		for (File f : list) {
-			String[] parts = f.getParent().split("/");
-			// exclude generic patch directories found in apps based on PdDroidParty
-			if (!parts[parts.length - 1].equals("patch")) {
-				patches.put(parts[parts.length - 1], f.getParent());
-				//Log.d(TAG, "AbsPath: " + f.getParent());
-			}
-		}
-	}
-
 	private void checkIsFirstRun() {
 		if(isFirstRun || isNewInstall) return;
 		try {
@@ -336,11 +310,6 @@ public class PatchSelector extends Activity {
 			Log.d(TAG, "error extracting demos: " + e.toString());
 			return;
 		}
-		/*if (demosFiles != null && demosFiles.size() != 0) {
-			for (File file : demosFiles) {
-				Log.d(TAG, "extracted: " + file.getAbsolutePath());
-			}
-		}*/
 	}
 
 	private void runBackedPatch() {
@@ -379,53 +348,6 @@ public class PatchSelector extends Activity {
 	private void runSelectorGui() {
 		setContentView(R.layout.patch_selector);
 		ListView patchList = (ListView) findViewById(R.id.patch_selector);
-		/*
-		Map<String, String> patches = new HashMap<String, String>();
-
-		patchList.setOnItemClickListener(new OnItemClickListener() {
-			@Override
-			public void onItemClick(AdapterView<?> arg0, View v, int position, long id) {
-				TextView item = (TextView) v;
-				String name = item.getText().toString();
-				launchDroidParty(patches.get(name), true);
-			}
-		});
-		patchList.setOnItemLongClickListener(new OnItemLongClickListener() {
-			@Override
-			public boolean onItemLongClick(AdapterView<?> arg0, View v, int position, long id) {
-				TextView item = (TextView) v;
-				String name = item.getText().toString();
-				Log.d(TAG, "long click on: " + name);
-				return true;
-			}
-		});
-		ProgressDialog progress = new ProgressDialog(PatchSelector.this);
-		progress.setMessage("Finding patches...");
-		progress.setCancelable(false);
-		progress.setIndeterminate(true);
-		progress.show();
-		ExecutorService executor = Executors.newSingleThreadExecutor();
-		executor.execute(() -> {
-			addBundledAbstractions();
-			if(isFirstRun || isNewInstall) copyDemos();
-			searchPath(patchesPath, patches);
-			ArrayList<String> keyList = new ArrayList<String>(patches.keySet());
-			Collections.sort(keyList, new Comparator<String>() {
-				public int compare(String a, String b) {
-					return a.toLowerCase().compareTo(b.toLowerCase());
-				}
-			});
-			final ArrayAdapter<String> adapter = new ArrayAdapter<String>(PatchSelector.this, android.R.layout.simple_list_item_1, keyList);
-
-			handler.post(() -> {
-				patchList.setAdapter(adapter);
-				try {
-					progress.dismiss();
-				} catch (Exception e) {
-					// nothing
-				}
-			});
-		});*/
 		Catalog.setCacheDir(getCacheDir());
 		CatalogView catalog = new CatalogView(patchesPath){
 			@Override

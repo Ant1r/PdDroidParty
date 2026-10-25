@@ -1,15 +1,12 @@
 package cx.mccormick.pddroidparty;
 
-import java.io.IOException;
 import java.io.File;
 import java.util.List;
 import java.util.ArrayList;
 import android.util.Log;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.net.URL;
-import java.net.URLConnection;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -197,10 +194,14 @@ public class Catalog {
 						Node n = get(f.getName());
 						n.file = f;
 					} else {
-						Group n = getGroup(f.getName());
+						Group n = findGroup(f.getName());
+						boolean alreadyExists = (n != null);
+						if(! alreadyExists) n = new Group(f.getName(), this);
 						n.file = f;
 						n.scan();
-						if(n.items.size() != 0 || n.groups.size() != 0) groups.add(n);
+						if(! alreadyExists) {
+							if(n.items.size() != 0 || n.groups.size() != 0) groups.add(n);
+						}
 					}
 				} else if(f.getName().equals("links.txt")) {
 					processLinksFile(f);
