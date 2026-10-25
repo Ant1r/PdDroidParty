@@ -7,14 +7,19 @@ import java.util.ArrayList;
 import android.util.Log;
 import android.content.Context;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.LayoutInflater;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.ImageView;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ArrayAdapter;
+import androidx.databinding.DataBindingUtil;
 
 import cx.mccormick.pddroidparty.Catalog.*;
+import cx.mccormick.pddroidparty.databinding.CatalogItemBinding;
 
 public class CatalogView {
 	public static final String TAG = "CatalogView";
@@ -35,19 +40,57 @@ public class CatalogView {
 		Log.d(TAG, "catalog: \n" + root.print(""));
 	}
 
+	public class CatalogAdapter extends ArrayAdapter<Node> {
+
+		private int resourceLayout;
+		private Context mContext;
+
+		public CatalogAdapter(Context context, int resource, List<Node> items) {
+			super(context, resource, items);
+			this.resourceLayout = resource;
+			this.mContext = context;
+		}
+
+		@Override
+		public View getView(int position, View convertView, ViewGroup parent) {
+			CatalogItemBinding binding;
+			if(convertView == null) {
+				binding = CatalogItemBinding.inflate(LayoutInflater.from(getContext()), parent, false);
+				convertView = binding.getRoot();
+			}
+			else {
+				binding = (CatalogItemBinding) convertView.getTag();
+			}
+			Node n = getItem(position);
+			binding.setNode(n);
+			convertView.setTag(binding);
+
+			TextView textView = (TextView) convertView.findViewById(R.id.name);
+			if (textView != null) {
+				textView.setText(n.name);
+			}
+			ImageView imageView = (ImageView) convertView.findViewById(R.id.icon);
+			if (imageView != null) {
+				if(n == current) imageView.setImageResource(R.drawable.ic_menu_back);
+				else {
+					if(n instanceof Group) imageView.setImageResource(R.drawable.ic_menu_archive);
+					else if(n.file == null) imageView.setImageResource(R.drawable.download);
+					else imageView.setImageResource(R.drawable.icon);
+				}
+			}
+			return convertView;
+		}
+	}
+
 	private void update(Context context, ListView view) {
-		ArrayList<String> list = new ArrayList<String>();
-		if(current.parent != null) list.add("<-- " + current.getPath("/"));
+		ArrayList<Node> list = new ArrayList<Node>();
+		if(current.parent != null) list.add(current);
 		// patches first
-		for(Node n: current.items) {
-			list.add(n.prefix() + n.name);
-		}
+		list.addAll(current.items);
 		// then dirs
-		for(Group n: current.groups) {
-			list.add(n.prefix() + n.name);
-		}
-		final ArrayAdapter<String> adapter = 
-			new ArrayAdapter<String>(context, android.R.layout.simple_list_item_1, list);
+		list.addAll(current.groups);
+		final CatalogAdapter adapter = 
+			new CatalogAdapter(context, R.layout.catalog_item, list);
 		view.setAdapter(adapter);
 	}
 
@@ -55,16 +98,13 @@ public class CatalogView {
 		view.setOnItemClickListener(new OnItemClickListener() {
 			@Override
 			public void onItemClick(AdapterView<?> arg0, View v, int position, long id) {
-				TextView item = (TextView) v;
-				String name = item.getText().toString();
-				Log.d(TAG, "click on: " + name);
-				if(name.startsWith("<--")) {
+				Node n = ((CatalogItemBinding)DataBindingUtil.getBinding(v)).getNode();
+				if(n == null) return;
+				if(n == current) {
 					if(current.parent != null) current = current.parent;
 					update(context, view);
 					return;
 				}
-				Node n = current.findWithPrefix(name);
-				if(n == null) return;
 				if(n instanceof Group) {
 					current = (Group)n;
 					update(context, view);
@@ -82,9 +122,8 @@ public class CatalogView {
 		view.setOnItemLongClickListener(new OnItemLongClickListener() {
 			@Override
 			public boolean onItemLongClick(AdapterView<?> arg0, View v, int position, long id) {
-				TextView item = (TextView) v;
-				String name = item.getText().toString();
-				Log.d(TAG, "long click on: " + name);
+				Node n = ((CatalogItemBinding)DataBindingUtil.getBinding(v)).getNode();
+				Log.d(TAG, "long click on: " + n.getPath());
 				return true;
 			}
 		});
