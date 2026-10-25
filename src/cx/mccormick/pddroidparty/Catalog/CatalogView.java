@@ -4,6 +4,9 @@ import java.io.IOException;
 import java.io.File;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+
 import android.util.Log;
 import android.content.Context;
 import android.view.View;
@@ -82,12 +85,22 @@ public class CatalogView {
 		}
 	}
 
+	private static void sortNodeList(List<? extends Node> list) {
+		Collections.sort(list, new Comparator<Node>() {
+			public int compare(Node a, Node b) {
+				return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+			}
+		});
+	}
+
 	private void update(Context context, ListView view) {
-		ArrayList<Node> list = new ArrayList<Node>();
+		List<Node> list = new ArrayList<Node>();
 		if(current.parent != null) list.add(current);
 		// patches first
+		sortNodeList(current.items);
 		list.addAll(current.items);
 		// then dirs
+		sortNodeList(current.groups);
 		list.addAll(current.groups);
 		final CatalogAdapter adapter = 
 			new CatalogAdapter(context, R.layout.catalog_item, list);
