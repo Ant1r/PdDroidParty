@@ -47,6 +47,9 @@ public class Catalog {
 							String objType = object.optString("type", "?");
 							String objName = object.getString("name");
 							if(objType.equals("dir")) {
+								Group n = group.getGroup(objName);
+								n.link = new GhLink(name, new URL(object.getString("url")));
+								n.link.scan(n);
 							} else {
 								Log.d(TAG, objName + " type:" + objType);
 								if(objName.endsWith(".pdz")) {
