@@ -22,6 +22,7 @@ import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.PopupMenu;
 import android.widget.PopupMenu.OnMenuItemClickListener;
+import android.app.Activity;
 
 import androidx.databinding.DataBindingUtil;
 
@@ -35,10 +36,54 @@ public class CatalogView {
 	private Context context;
 	private ListView view;
 
-	CatalogView(String rootPath) {
+	CatalogView(Activity activity, String rootPath) {
 		root = new Group("", null);
 		root.file = new File(rootPath);
 		current = root;
+		context = activity;
+
+		view = (ListView) activity.findViewById(R.id.patch_selector);
+		view.setOnItemClickListener(new OnItemClickListener() {
+			@Override
+			public void onItemClick(AdapterView<?> arg0, View v, int position, long id) {
+				Node n = ((CatalogItemBinding)DataBindingUtil.getBinding(v)).getNode();
+				if(n == null) return;
+				// return to parent directory
+				if(n == current) {
+					if(current.parent != null) current = current.parent;
+					update();
+					return;
+				}
+				// enter directory
+				if(n instanceof Group) {
+					current = (Group)n;
+					update();
+					return;
+				}
+				else {
+					// run or install
+					if(n.file != null) {
+						runPatchDir(n.file.getPath());
+					} else {
+						if(n.link != null && n.parent != null) {
+							installPdz(n.name, n.parent.getPath(), n.link.url.toString());
+						}
+					}
+					return;
+				}
+			}
+		});
+		view.setOnItemLongClickListener(new OnItemLongClickListener() {
+			@Override
+			public boolean onItemLongClick(AdapterView<?> arg0, View v, int position, long id) {
+				Node n = ((CatalogItemBinding)DataBindingUtil.getBinding(v)).getNode();
+				Log.d(TAG, "long click on: " + n.getPath());
+				showMenu(n);
+				return true;
+			}
+		});
+		scan();
+		update();
 	}
 
 	public void scan() {
@@ -134,49 +179,6 @@ public class CatalogView {
 			}
 		});
 		popup.show();
-	}
-
-	public void setup(Context context, ListView view) {
-		this.context = context;
-		this.view = view;
-		view.setOnItemClickListener(new OnItemClickListener() {
-			@Override
-			public void onItemClick(AdapterView<?> arg0, View v, int position, long id) {
-				Node n = ((CatalogItemBinding)DataBindingUtil.getBinding(v)).getNode();
-				if(n == null) return;
-				if(n == current) {
-					print();
-					if(current.parent != null) current = current.parent;
-					update();
-					return;
-				}
-				if(n instanceof Group) {
-					current = (Group)n;
-					update();
-					return;
-				}
-				else {
-					if(n.file != null) {
-						runPatchDir(n.file.getPath());
-					} else {
-						if(n.link != null && n.parent != null) {
-							installPdz(n.name, n.parent.getPath(), n.link.url.toString());
-						}
-					}
-					return;
-				}
-			}
-		});
-		view.setOnItemLongClickListener(new OnItemLongClickListener() {
-			@Override
-			public boolean onItemLongClick(AdapterView<?> arg0, View v, int position, long id) {
-				Node n = ((CatalogItemBinding)DataBindingUtil.getBinding(v)).getNode();
-				Log.d(TAG, "long click on: " + n.getPath());
-				showMenu(n);
-				return true;
-			}
-		});
-		update();
 	}
 
 	public void runPatchDir(String patchDir) {}

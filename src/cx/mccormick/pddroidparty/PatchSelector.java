@@ -368,9 +368,8 @@ public class PatchSelector extends Activity {
 
 	private void runSelectorGui() {
 		setContentView(R.layout.patch_selector);
-		ListView patchList = (ListView) findViewById(R.id.patch_selector);
 		Catalog.setCacheDir(getCacheDir());
-		catalog = new CatalogView(patchesPath){
+		catalog = new CatalogView(PatchSelector.this, patchesPath){
 			@Override
 			public void runPatchDir(String patchDir) {
 				launchDroidParty(patchDir, true);
@@ -379,17 +378,15 @@ public class PatchSelector extends Activity {
 			public void installPdz(String name, String path, String url) {
 				Log.d(TAG, "installing '" + name + "' in '" + path + "' from: " + url);
 				new PatchUtils.DownloadFileFromURL(PatchSelector.this, patchesPath + "temp.pdz") {
-						@Override
-						protected void onPostExecute(String zipFile) {
-							super.onPostExecute(zipFile);
-							Log.d(TAG, zipFile + " successfully downloaded...");
-							processZip(zipFile, path, name);
-						}
+					@Override
+					protected void onPostExecute(String zipFile) {
+						super.onPostExecute(zipFile);
+						Log.d(TAG, zipFile + " successfully downloaded...");
+						processZip(zipFile, path, name);
+					}
 				}.execute(url);
 			}
 		};
-		catalog.scan();
 		catalog.print();
-		catalog.setup(PatchSelector.this, patchList);
 	}
 }
