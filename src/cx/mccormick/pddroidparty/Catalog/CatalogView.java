@@ -22,7 +22,10 @@ import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.PopupMenu;
 import android.widget.PopupMenu.OnMenuItemClickListener;
-import android.app.Activity;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.activity.ComponentActivity;
+import androidx.activity.OnBackPressedCallback;
 
 import androidx.databinding.DataBindingUtil;
 
@@ -36,7 +39,7 @@ public class CatalogView {
 	private Context context;
 	private ListView view;
 
-	CatalogView(Activity activity, String rootPath) {
+	CatalogView(AppCompatActivity activity, String rootPath) {
 		root = new Group("", null);
 		root.file = new File(rootPath);
 		current = root;
@@ -82,9 +85,20 @@ public class CatalogView {
 				return true;
 			}
 		});
+
+		activity.getOnBackPressedDispatcher().addCallback(backPressedCallback);
+
 		scan();
 		update();
 	}
+
+	private OnBackPressedCallback backPressedCallback = new OnBackPressedCallback(false) {
+		@Override
+		public void handleOnBackPressed() {
+			if(current.parent != null) current = current.parent;
+			update();
+		}
+	};
 
 	public void scan() {
 		root.scan();
@@ -156,6 +170,7 @@ public class CatalogView {
 		final CatalogAdapter adapter = 
 			new CatalogAdapter(R.layout.catalog_item, list);
 		view.setAdapter(adapter);
+		backPressedCallback.setEnabled(current.parent != null);
 	}
 
 	private void showMenu(Node node) {

@@ -18,7 +18,7 @@ import static java.nio.file.StandardCopyOption.*;
 import org.puredata.core.PdBase;
 import org.puredata.core.utils.IoUtils;
 
-import android.app.Activity;
+import androidx.appcompat.app.AppCompatActivity;
 import android.app.AlertDialog;
 import android.content.ContentResolver;
 import android.content.DialogInterface;
@@ -50,7 +50,7 @@ import android.widget.Toast;
 import com.larvalabs.svgandroid.SVG;
 import com.larvalabs.svgandroid.SVGParser;
 
-public class PatchSelector extends Activity {
+public class PatchSelector extends AppCompatActivity {
 
 	Resources res = null;
 	Handler handler;
