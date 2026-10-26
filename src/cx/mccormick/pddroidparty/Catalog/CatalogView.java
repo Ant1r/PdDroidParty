@@ -32,6 +32,8 @@ public class CatalogView {
 	public static final String TAG = "CatalogView";
 	private Group root;
 	private Group current;
+	private Context context;
+	private ListView view;
 
 	CatalogView(String rootPath) {
 		root = new Group("", null);
@@ -52,7 +54,7 @@ public class CatalogView {
 		private int resourceLayout;
 		private Context mContext;
 
-		public CatalogAdapter(Context context, int resource, List<Node> items) {
+		public CatalogAdapter(int resource, List<Node> items) {
 			super(context, resource, items);
 			this.resourceLayout = resource;
 			this.mContext = context;
@@ -97,7 +99,7 @@ public class CatalogView {
 		});
 	}
 
-	private void update(Context context, ListView view) {
+	public void update() {
 		List<Node> list = new ArrayList<Node>();
 		if(current.parent != null) list.add(current);
 		// patches first
@@ -107,11 +109,11 @@ public class CatalogView {
 		sortNodeList(current.groups);
 		list.addAll(current.groups);
 		final CatalogAdapter adapter = 
-			new CatalogAdapter(context, R.layout.catalog_item, list);
+			new CatalogAdapter(R.layout.catalog_item, list);
 		view.setAdapter(adapter);
 	}
 
-	private void showMenu(Context context, View view, Node node) {
+	private void showMenu(Node node) {
 		PopupMenu popup = new PopupMenu(context, view);
 		popup.getMenuInflater().inflate(R.menu.catalog_context, popup.getMenu());
 		popup.setOnMenuItemClickListener(new OnMenuItemClickListener() {
@@ -135,25 +137,31 @@ public class CatalogView {
 	}
 
 	public void setup(Context context, ListView view) {
+		this.context = context;
+		this.view = view;
 		view.setOnItemClickListener(new OnItemClickListener() {
 			@Override
 			public void onItemClick(AdapterView<?> arg0, View v, int position, long id) {
 				Node n = ((CatalogItemBinding)DataBindingUtil.getBinding(v)).getNode();
 				if(n == null) return;
 				if(n == current) {
+					print();
 					if(current.parent != null) current = current.parent;
-					update(context, view);
+					update();
 					return;
 				}
 				if(n instanceof Group) {
 					current = (Group)n;
-					update(context, view);
+					update();
 					return;
 				}
 				else {
-					//launchDroidParty(n.file);
 					if(n.file != null) {
-						clikedOn(n.file.getPath());
+						runPatchDir(n.file.getPath());
+					} else {
+						if(n.link != null && n.parent != null) {
+							installPdz(n.name, n.parent.getPath(), n.link.url.toString());
+						}
 					}
 					return;
 				}
@@ -164,13 +172,14 @@ public class CatalogView {
 			public boolean onItemLongClick(AdapterView<?> arg0, View v, int position, long id) {
 				Node n = ((CatalogItemBinding)DataBindingUtil.getBinding(v)).getNode();
 				Log.d(TAG, "long click on: " + n.getPath());
-				showMenu(context, view, n);
+				showMenu(n);
 				return true;
 			}
 		});
-		update(context, view);
+		update();
 	}
 
-	public void clikedOn(String patchDir) {}
+	public void runPatchDir(String patchDir) {}
+	public void installPdz(String name, String path, String url) {}
 }
 

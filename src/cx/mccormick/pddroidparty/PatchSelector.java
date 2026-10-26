@@ -61,6 +61,7 @@ public class PatchSelector extends Activity {
 	Intent alreadyProcessedIntent = null;
 	static final String TAG = "PatchSelector";
 	String patchesPath;
+	CatalogView catalog = null;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -120,7 +121,7 @@ public class PatchSelector extends Activity {
 						@Override
 						protected void onPostExecute(String zipFile) {
 							super.onPostExecute(zipFile);
-							processZip(zipFile);
+							processZip(zipFile, "", null);
 						}
 					}.execute(data.toString());
 					return;
@@ -132,7 +133,7 @@ public class PatchSelector extends Activity {
 				} else {
 					// handle as file uri
 					Log.d(TAG, "> Open file  : " + data.getPath());
-					processZip(data.getPath());
+					processZip(data.getPath(), "", null);
 				}
 			}
 		}
@@ -154,7 +155,7 @@ public class PatchSelector extends Activity {
 				tmp.write(buffer);
 			tmp.close();
 			attachment.close();
-			processZip(tempPdzPath);
+			processZip(tempPdzPath, "", null);
 		}
 		catch (FileNotFoundException e) {
 			e.printStackTrace();
@@ -163,18 +164,32 @@ public class PatchSelector extends Activity {
 		}
 	}
 
-	private void processZip(String zipPath) {
+	private void processZip(String zipPath, String destDirPath, String checkName) {
 		String tempPath = patchesPath + "pdTemp/";
 		PatchUtils.deleteDirectory(new File(tempPath));
 		String patchName = PatchUtils.extractZipTo(zipPath, tempPath);
 		new File(zipPath).delete();
-		if(patchName == null) return;
-		String installedVersion = PatchUtils.getPatchVersion(patchesPath + patchName);
+		if(patchName == null) {
+			Log.e(TAG, "processZip() zipfile is malformed");
+			return;
+		}
+		if(checkName != null && ! checkName.equals(patchName)) {
+			Log.e(TAG, "processZip() the name of the zip and its first directory don't match: " + checkName + " / " + patchName);
+			return;
+		}
+		String patchPath = patchesPath + destDirPath + "/" + patchName;
+		String installedVersion = PatchUtils.getPatchVersion(patchPath);
 		if (installedVersion == null) { // patch isn't installed yet
 			try {
-				Files.move(new File(tempPath + patchName).toPath(), new File(patchesPath + patchName).toPath(), REPLACE_EXISTING);
-				launchDroidParty(patchesPath + patchName, true);
-			} catch(Exception e) {}
+				Log.d(TAG, "processZip() creating dir " + patchesPath + destDirPath);
+				new File(patchesPath + destDirPath).mkdirs();
+				Files.move(new File(tempPath + patchName).toPath(), new File(patchPath).toPath(), REPLACE_EXISTING);
+				catalog.scan();
+				catalog.update();
+				launchDroidParty(patchPath, true);
+			} catch(Exception e) {
+				Log.e(TAG, "processZip() exception: " + e.toString());
+			}
 			finish();
 			return;
 		}
@@ -197,10 +212,16 @@ public class PatchSelector extends Activity {
 					dialog.dismiss();
 					// move temp to final location
 					try {
-						PatchUtils.deleteDirectory(new File(patchesPath + patchName));
-						Files.move(new File(tempPath + patchName).toPath(), new File(patchesPath + patchName).toPath(), REPLACE_EXISTING);
-						launchDroidParty(patchesPath + patchName, true);
-					} catch(Exception e) {}
+						Log.d(TAG, "processZip() creating dir " + patchesPath + destDirPath);
+						new File(patchesPath + destDirPath).mkdirs();
+						PatchUtils.deleteDirectory(new File(patchPath));
+						Files.move(new File(tempPath + patchName).toPath(), new File(patchPath).toPath(), REPLACE_EXISTING);
+						catalog.scan();
+						catalog.update();
+						launchDroidParty(patchPath, true);
+					} catch(Exception e) {
+						Log.e(TAG, "processZip() exception: " + e.toString());
+					}
 					finish();
 				}
 			})
@@ -208,7 +229,7 @@ public class PatchSelector extends Activity {
 				@Override
 				public void onClick(DialogInterface dialog, int which) {
 					dialog.dismiss();
-					launchDroidParty(patchesPath + patchName, true);
+					launchDroidParty(patchPath, true);
 					finish();
 				}
 			})
@@ -349,10 +370,22 @@ public class PatchSelector extends Activity {
 		setContentView(R.layout.patch_selector);
 		ListView patchList = (ListView) findViewById(R.id.patch_selector);
 		Catalog.setCacheDir(getCacheDir());
-		CatalogView catalog = new CatalogView(patchesPath){
+		catalog = new CatalogView(patchesPath){
 			@Override
-			public void clikedOn(String patchDir) {
+			public void runPatchDir(String patchDir) {
 				launchDroidParty(patchDir, true);
+			}
+			@Override
+			public void installPdz(String name, String path, String url) {
+				Log.d(TAG, "installing '" + name + "' in '" + path + "' from: " + url);
+				new PatchUtils.DownloadFileFromURL(PatchSelector.this, patchesPath + "temp.pdz") {
+						@Override
+						protected void onPostExecute(String zipFile) {
+							super.onPostExecute(zipFile);
+							Log.d(TAG, zipFile + " successfully downloaded...");
+							processZip(zipFile, path, name);
+						}
+				}.execute(url);
 			}
 		};
 		catalog.scan();

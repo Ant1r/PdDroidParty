@@ -51,8 +51,8 @@ public class Catalog {
 								Log.d(TAG, objName + " type:" + objType);
 								if(objName.endsWith(".pdz")) {
 									String patchName = objName.substring(0, objName.length() - 4);
-									Node n = group.get(patchName);
-									n.link = new Link(patchName, new URL(object.getString("url")));
+									Item n = group.get(patchName);
+									n.link = new Link(patchName, new URL(object.getString("download_url")));
 								}
 							}
 						}
@@ -112,12 +112,21 @@ public class Catalog {
 		}
 	}
 
+	public static class Item extends Node {
+		Item(String name, Group parent) {
+			super(name, parent);
+			Log.d(TAG, "creating item: " + name + " in group: " + parent.getPath());
+		}
+	}
+
 	public static class Group extends Node {
-		public List<Node> items = new ArrayList<Node>();
+		public List<Item> items = new ArrayList<Item>();
 		public List<Group> groups = new ArrayList<Group>();
 
 		Group(String name, Group parent) {
 			super(name, parent);
+			if(parent == null) Log.d(TAG, "creating root group");
+			else Log.d(TAG, "creating group: " + name + " in group: " + parent.getPath());
 		}
 
 		@Override
@@ -136,17 +145,19 @@ public class Catalog {
 			return false;
 		}
 
-		public Node find(String name) {
-			for(Node n: items) {
+		public Item find(String name) {
+			for(Item n: items) {
 				if(name.equals(n.name)) return n;
 			}
 			return null;
 		}
 
-		public Node get(String name) {
-			Node n = find(name);
-			if(n == null) n = new Node(name, this);
-			items.add(n);
+		public Item get(String name) {
+			Item n = find(name);
+			if(n == null) {
+				n = new Item(name, this);
+				items.add(n);
+			}
 			return n;
 		}
 
@@ -169,8 +180,10 @@ public class Catalog {
 
 		public Group getGroup(String name) {
 			Group n = findGroup(name);
-			if(n == null) n = new Group(name, this);
-			groups.add(n);
+			if(n == null) {
+				n = new Group(name, this);
+				groups.add(n);
+			}
 			return n;
 		}
 
@@ -191,7 +204,7 @@ public class Catalog {
 			for (File f: files) {
 				if(f.isDirectory()) {
 					if(isPatchDir(f)) {
-						Node n = get(f.getName());
+						Item n = get(f.getName());
 						n.file = f;
 					} else {
 						Group n = findGroup(f.getName());
@@ -211,7 +224,7 @@ public class Catalog {
 
 		public String print(String prefix) {
 			String s = "";
-			for(Node n: items) {
+			for(Item n: items) {
 				s += prefix + n.prefix() + n.name + "\n";
 			}
 			for(Group n: groups) {
