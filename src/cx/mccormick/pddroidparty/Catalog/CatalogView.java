@@ -164,9 +164,11 @@ public class CatalogView {
 		// patches first
 		sortNodeList(current.items);
 		list.addAll(current.items);
-		// then dirs
+		// then non-empty dirs
 		sortNodeList(current.groups);
-		list.addAll(current.groups);
+		for(Group n: current.groups) {
+			if(n.containsItems()) list.add(n);
+		}
 		final CatalogAdapter adapter = 
 			new CatalogAdapter(R.layout.catalog_item, list);
 		view.setAdapter(adapter);

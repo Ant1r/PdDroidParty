@@ -140,6 +140,14 @@ public class Catalog {
 			return "-> ";
 		}
 
+		public boolean containsItems() {
+			if(items.size() != 0) return true;
+			else for(Group n: groups) {
+				if(n.containsItems()) return true;
+			}
+			return false;
+		}
+
 		private static boolean isPatchDir(File dir) {
 			File[] files = dir.listFiles();
 			for (File f: files) {
