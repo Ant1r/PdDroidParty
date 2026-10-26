@@ -12,6 +12,7 @@ import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.ImageView;
@@ -19,6 +20,9 @@ import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ArrayAdapter;
+import android.widget.PopupMenu;
+import android.widget.PopupMenu.OnMenuItemClickListener;
+
 import androidx.databinding.DataBindingUtil;
 
 import cx.mccormick.pddroidparty.Catalog.*;
@@ -107,6 +111,29 @@ public class CatalogView {
 		view.setAdapter(adapter);
 	}
 
+	private void showMenu(Context context, View view, Node node) {
+		PopupMenu popup = new PopupMenu(context, view);
+		popup.getMenuInflater().inflate(R.menu.catalog_context, popup.getMenu());
+		popup.setOnMenuItemClickListener(new OnMenuItemClickListener() {
+			@Override
+			public boolean onMenuItemClick(MenuItem item) {
+				int id = item.getItemId();
+				if(id == R.id.install) {
+					Log.d(TAG, "install " + node.getPath());
+					return true;
+				} else if(id == R.id.check_updates) {
+					Log.d(TAG, "check updates " + node.getPath());
+					return true;
+				} else if(id == R.id.delete) {
+					Log.d(TAG, "delete " + node.getPath());
+					return true;
+				}
+				return false;
+			}
+		});
+		popup.show();
+	}
+
 	public void setup(Context context, ListView view) {
 		view.setOnItemClickListener(new OnItemClickListener() {
 			@Override
@@ -137,6 +164,7 @@ public class CatalogView {
 			public boolean onItemLongClick(AdapterView<?> arg0, View v, int position, long id) {
 				Node n = ((CatalogItemBinding)DataBindingUtil.getBinding(v)).getNode();
 				Log.d(TAG, "long click on: " + n.getPath());
+				showMenu(context, view, n);
 				return true;
 			}
 		});

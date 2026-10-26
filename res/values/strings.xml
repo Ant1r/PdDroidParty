@@ -3,4 +3,8 @@
 	<string name="app_name">PdDroid Party</string>
 	<string name="okbutton">ok</string>
 	<string name="cancelbutton">cancel</string>
+
+	<string name="install">install</string>
+	<string name="delete">delete</string>
+	<string name="check_updates">check updates</string>
 </resources>
