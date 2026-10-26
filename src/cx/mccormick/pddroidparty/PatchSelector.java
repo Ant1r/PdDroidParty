@@ -165,15 +165,25 @@ public class PatchSelector extends AppCompatActivity {
 	}
 
 	private void processZip(String zipPath, String destDirPath, String checkName) {
+		boolean quitAfter = (checkName == null); // checkName is only set by the PatchSelector
+
 		String tempPath = patchesPath + "pdTemp/";
 		PatchUtils.deleteDirectory(new File(tempPath));
 		String patchName = PatchUtils.extractZipTo(zipPath, tempPath);
 		new File(zipPath).delete();
 		if(patchName == null) {
-			Log.e(TAG, "processZip() zipfile is malformed");
+			Toast.makeText(PatchSelector.this,
+				"Zip file format not supported, or bad file",
+				Toast.LENGTH_LONG)
+				.show();
+			Log.e(TAG, "processZip() bad zipfile");
 			return;
 		}
 		if(checkName != null && ! checkName.equals(patchName)) {
+			Toast.makeText(PatchSelector.this,
+				"The name of the zip and its first directory don't match: " + checkName + " / " + patchName,
+				Toast.LENGTH_LONG)
+				.show();
 			Log.e(TAG, "processZip() the name of the zip and its first directory don't match: " + checkName + " / " + patchName);
 			return;
 		}
@@ -190,13 +200,13 @@ public class PatchSelector extends AppCompatActivity {
 			} catch(Exception e) {
 				Log.e(TAG, "processZip() exception: " + e.toString());
 			}
-			finish();
+			if(quitAfter) finish();
 			return;
 		}
 
 		String zipVersion = PatchUtils.getPatchVersion(tempPath + patchName);
 		if(zipVersion == null) {
-			finish();
+			if(quitAfter) finish();
 			return;
 		}
 
@@ -222,7 +232,7 @@ public class PatchSelector extends AppCompatActivity {
 					} catch(Exception e) {
 						Log.e(TAG, "processZip() exception: " + e.toString());
 					}
-					finish();
+					if(quitAfter) finish();
 				}
 			})
 			.setNegativeButton("Cancel", new OnClickListener() {
@@ -230,7 +240,7 @@ public class PatchSelector extends AppCompatActivity {
 				public void onClick(DialogInterface dialog, int which) {
 					dialog.dismiss();
 					launchDroidParty(patchPath, true);
-					finish();
+					if(quitAfter) finish();
 				}
 			})
 			.show();
