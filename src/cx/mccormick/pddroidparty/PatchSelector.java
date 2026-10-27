@@ -17,6 +17,7 @@ import static java.nio.file.StandardCopyOption.*;
 
 import org.puredata.core.PdBase;
 import org.puredata.core.utils.IoUtils;
+import org.puredata.android.service.PdPreferences;
 
 import androidx.appcompat.app.AppCompatActivity;
 import android.app.AlertDialog;
@@ -42,6 +43,8 @@ import android.os.Handler;
 import android.os.Build;
 import android.util.Log;
 import android.view.View;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
@@ -140,6 +143,30 @@ public class PatchSelector extends AppCompatActivity {
 			}
 		}
 		return;
+	}
+
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		getMenuInflater().inflate(R.menu.options_menu, menu);
+		//if (! getPackageManager().hasSystemFeature(PackageManager.FEATURE_MIDI)) {
+			menu.findItem(R.id.midi).setVisible(false);
+		//}
+		return true;
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		int id = item.getItemId();
+		if (id == R.id.about) {
+			About.open(this);
+		} else if (id == R.id.exit) {
+			finish();
+		} /*else if (id == R.id.midi) {
+			midi.menuClicked(this);
+		}*/ else if(id == R.id.audio) {
+			startActivity(new Intent(this, PdPreferences.class));
+		}
+		return super.onOptionsItemSelected(item);
 	}
 
 	private void processContentUri(Uri data) {
