@@ -7,4 +7,9 @@
 	<string name="install">install</string>
 	<string name="delete">delete</string>
 	<string name="check_updates">check updates</string>
+
+	<string name="about">About</string>
+	<string name="midi">Midi</string>
+	<string name="audio">Audio</string>
+	<string name="exit">Exit</string>
 </resources>

@@ -81,10 +81,6 @@ public class PdDroidParty extends AppCompatActivity implements SharedPreferences
 	Widget widgetpopped = null;
 	MulticastLock wifiMulticastLock = null;
 	private ProgressDialog progress = null;
-	private MenuItem menuabout = null;
-	private MenuItem menuexit = null;
-	private MenuItem menumidi = null;
-	private MenuItem menuaudio = null;
 
 	private MidiManager midiManager = null;
 	private MidiDevice midiDevice = null;
@@ -180,34 +176,17 @@ public class PdDroidParty extends AppCompatActivity implements SharedPreferences
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
-		return true;
-	}
-
-	// menu launch yeah
-	@Override
-	public boolean onPrepareOptionsMenu(Menu menu) {
-		menu.clear();
-		// about menu item
-		menuabout = menu.add(0, Menu.FIRST + menu.size(), 0, "About");
-		menuabout.setIcon(android.R.drawable.ic_menu_info_details);
-		// add the menu bang menu items
-		MenuBang.setMenu(menu);
-		// TODO: preferences = ic_menu_preferences
-		// midi menu
-		if (getPackageManager().hasSystemFeature(PackageManager.FEATURE_MIDI)) {
-			menumidi = menu.add(0, Menu.FIRST + menu.size(), 0, "Midi");
-			menumidi.setIcon(android.R.drawable.ic_menu_manage);
+		getMenuInflater().inflate(R.menu.options_menu, menu);
+		if (! getPackageManager().hasSystemFeature(PackageManager.FEATURE_MIDI)) {
+			menu.findItem(R.id.midi).setVisible(false);
 		}
-		// exit menu item
-		menuaudio = menu.add(0, Menu.FIRST + menu.size(), 0, "Audio");
-		menuexit = menu.add(0, Menu.FIRST + menu.size(), 0, "Exit");
-		menuexit.setIcon(android.R.drawable.ic_menu_close_clear_cancel);
-		return super.onPrepareOptionsMenu(menu);
+		return true;
 	}
 
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
-		if (item == menuabout) {
+		int id = item.getItemId();
+		if (id == R.id.about) {
 			// load in the about dialog contents from assets/about.html
 			StringBuffer sb = new StringBuffer();
 			try {
@@ -237,15 +216,15 @@ public class PdDroidParty extends AppCompatActivity implements SharedPreferences
 			ab.show();
 			// make the links clickable
 			((TextView)ab.findViewById(android.R.id.message)).setMovementMethod(LinkMovementMethod.getInstance());
-		} else if (item == menuexit) {
+		} else if (id == R.id.exit) {
 			finish();
-		} else if (menumidi != null && item == menumidi) {
+		} else if (id == R.id.midi) {
 			if (midiDevice != null) {
 				disconnectMidiDevice(true);
 			} else {
 				chooseMidiDevice();
 			}
-		} else if(item == menuaudio) {
+		} else if(id == R.id.audio) {
 			startActivity(new Intent(this, PdPreferences.class));
 		} else {
 			// pass the menu selection through to the MenuBang manager
