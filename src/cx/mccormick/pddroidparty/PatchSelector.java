@@ -46,6 +46,7 @@ import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.Toast;
+import androidx.appcompat.widget.Toolbar;
 
 import com.larvalabs.svgandroid.SVG;
 import com.larvalabs.svgandroid.SVGParser;
@@ -69,6 +70,7 @@ public class PatchSelector extends AppCompatActivity {
 		patchesPath = getExternalFilesDir(null).getPath() + "/";
 		res = getResources();
 		handler = new Handler();
+
 		checkIsFirstRun();
 		Log.d(TAG, "Pd version: " + PdVersionString.get());
 		// if we have a baked patch, jump straight into Pd initialisation
@@ -378,6 +380,11 @@ public class PatchSelector extends AppCompatActivity {
 
 	private void runSelectorGui() {
 		setContentView(R.layout.patch_selector);
+
+		Toolbar myToolbar = (Toolbar) findViewById(R.id.selector_toolbar);
+		myToolbar.setTitle("PdDroidParty Patch Selector");
+		setSupportActionBar(myToolbar);
+
 		Catalog.setCacheDir(getCacheDir());
 		catalog = new CatalogView(PatchSelector.this, patchesPath){
 			@Override
