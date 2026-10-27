@@ -165,7 +165,7 @@ public class PatchSelector extends AppCompatActivity {
 	}
 
 	private void processZip(String zipPath, String destDirPath, String checkName) {
-		boolean quitAfter = (checkName == null); // checkName is only set by the PatchSelector
+		boolean runAndQuit = (checkName == null); // checkName is only set by the PatchSelector
 
 		String tempPath = patchesPath + "pdTemp/";
 		PatchUtils.deleteDirectory(new File(tempPath));
@@ -195,17 +195,17 @@ public class PatchSelector extends AppCompatActivity {
 				new File(patchesPath + destDirPath).mkdirs();
 				Files.move(new File(tempPath + patchName).toPath(), new File(patchPath).toPath(), REPLACE_EXISTING);
 				catalog.refresh();
-				launchDroidParty(patchPath, true);
+				if(runAndQuit) launchDroidParty(patchPath, true);
 			} catch(Exception e) {
 				Log.e(TAG, "processZip() exception: " + e.toString());
 			}
-			if(quitAfter) finish();
+			if(runAndQuit) finish();
 			return;
 		}
 
 		String zipVersion = PatchUtils.getPatchVersion(tempPath + patchName);
 		if(zipVersion == null) {
-			if(quitAfter) finish();
+			if(runAndQuit) finish();
 			return;
 		}
 
@@ -226,19 +226,21 @@ public class PatchSelector extends AppCompatActivity {
 						PatchUtils.deleteDirectory(new File(patchPath));
 						Files.move(new File(tempPath + patchName).toPath(), new File(patchPath).toPath(), REPLACE_EXISTING);
 						catalog.refresh();
-						launchDroidParty(patchPath, true);
+						if(runAndQuit) launchDroidParty(patchPath, true);
 					} catch(Exception e) {
 						Log.e(TAG, "processZip() exception: " + e.toString());
 					}
-					if(quitAfter) finish();
+					if(runAndQuit) finish();
 				}
 			})
 			.setNegativeButton("Cancel", new OnClickListener() {
 				@Override
 				public void onClick(DialogInterface dialog, int which) {
 					dialog.dismiss();
-					launchDroidParty(patchPath, true);
-					if(quitAfter) finish();
+					if(runAndQuit) {
+						launchDroidParty(patchPath, true);
+						finish();
+					}
 				}
 			})
 			.show();
