@@ -13,6 +13,8 @@ import org.json.JSONArray;
 
 public class Catalog {
 	public static final String TAG = "Catalog";
+	public static final int MAX_DEPTH = 100;
+
 	protected static File cacheDir;
 	public static void setCacheDir(File dir) {
 		cacheDir = dir;
@@ -23,6 +25,7 @@ public class Catalog {
 	public static class Link {
 		public String name;
 		public URL url = null;
+		boolean fromLinksTxt = false;
 		Link(String name, URL url) {
 			this.name = name;
 			this.url = url;
@@ -34,8 +37,10 @@ public class Catalog {
 		GhLink(String name, URL url) {
 			super(name, url);
 		}
+
 		@Override
 		public void scan(Group group) {
+			if(group.depth() >= MAX_DEPTH) return;
 			new StringDownloader(){
 				@Override
 				protected void onPostExecute(String downloadedString) {
@@ -51,15 +56,30 @@ public class Catalog {
 								n.link = new GhLink(name, new URL(object.getString("url")));
 								n.link.scan(n);
 							} else {
+								URL objUrl = new URL(object.getString("download_url"));
 								Log.d(TAG, objName + " type:" + objType);
 								if(objName.endsWith(".pdz")) {
 									String patchName = objName.substring(0, objName.length() - 4);
 									Item n = group.get(patchName);
-									n.link = new Link(patchName, new URL(object.getString("download_url")));
+									n.link = new Link(patchName, objUrl);
+								} else if(objName.equals("links.txt")) {
+									processLinksFileUrl(objUrl, group);
 								}
 							}
 						}
-					} catch(Exception e) {}
+					} catch(Exception e) {
+						Log.d(TAG, "GhLink.scan() exception: " + e.toString());
+					}
+				}
+			}.execute(url);
+		}
+
+		private static void processLinksFileUrl(URL url, Group group) {
+			new StringDownloader(){
+				@Override
+				protected void onPostExecute(String downloadedString) {
+					String[] lines = downloadedString.split("[\\r\\n]+");
+					for(String line: lines) processLinkLine(line, group);
 				}
 			}.execute(url);
 		}
@@ -77,7 +97,8 @@ public class Catalog {
 	public static void processLinkLine(String linksLine, Group parent) {
 		Link link = buildLink(linksLine);
 		if(link != null) {
-			Log.d(TAG, "found link: " + link.name);
+			Log.d(TAG, "found link in " + parent.getPath() + ": " + link.name);
+			link.fromLinksTxt = true;
 			Group n = parent.getGroup(link.name);
 			n.link = link;
 			link.scan(n);
@@ -134,7 +155,7 @@ public class Catalog {
 
 		@Override
 		public String prefix() {
-			if(link != null && file == null) {
+			if(link != null && link.fromLinksTxt == true) {
 				return "=> ";
 			}
 			return "-> ";
@@ -146,6 +167,16 @@ public class Catalog {
 				if(n.containsItems()) return true;
 			}
 			return false;
+		}
+
+		public int depth() {
+			int i = 0;
+			Group g = this;
+			while(g.parent != null) {
+				g = g.parent;
+				i++;
+			}
+			return i;
 		}
 
 		private static boolean isPatchDir(File dir) {
@@ -211,6 +242,7 @@ public class Catalog {
 		public void scan() {
 			if(file == null) return;
 			if(!file.isDirectory()) return;
+			if(depth() >= MAX_DEPTH) return;
 			File[] files = file.listFiles();
 			for (File f: files) {
 				if(f.isDirectory()) {
@@ -218,14 +250,9 @@ public class Catalog {
 						Item n = get(f.getName());
 						n.file = f;
 					} else {
-						Group n = findGroup(f.getName());
-						boolean alreadyExists = (n != null);
-						if(! alreadyExists) n = new Group(f.getName(), this);
+						Group n = getGroup(f.getName());
 						n.file = f;
 						n.scan();
-						if(! alreadyExists) {
-							if(n.items.size() != 0 || n.groups.size() != 0) groups.add(n);
-						}
 					}
 				} else if(f.getName().equals("links.txt")) {
 					processLinksFile(f);

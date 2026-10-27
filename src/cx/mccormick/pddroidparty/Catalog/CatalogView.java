@@ -173,6 +173,7 @@ public class CatalogView {
 			new CatalogAdapter(R.layout.catalog_item, list);
 		view.setAdapter(adapter);
 		backPressedCallback.setEnabled(current.parent != null);
+		if(current.parent == null) print();
 	}
 
 	private void showMenu(Node node) {

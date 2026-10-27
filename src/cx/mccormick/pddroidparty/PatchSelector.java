@@ -397,6 +397,5 @@ public class PatchSelector extends AppCompatActivity {
 				}.execute(url);
 			}
 		};
-		catalog.print();
 	}
 }
