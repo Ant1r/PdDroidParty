@@ -1,17 +1,13 @@
 package cx.mccormick.pddroidparty;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.puredata.android.io.AudioParameters;
-//import org.puredata.android.midi.MidiToPdAdapter;
-//import org.puredata.android.midi.PdToMidiAdapter;
 import org.puredata.android.service.PdService;
 import org.puredata.android.service.PdPreferences;
 import org.puredata.core.PdBase;
@@ -19,7 +15,6 @@ import org.puredata.core.utils.PdDispatcher;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.ComponentName;
 import android.content.Context;
@@ -27,7 +22,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
-import android.content.res.AssetManager;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.content.pm.PackageManager;
@@ -40,17 +34,12 @@ import android.net.wifi.WifiManager.MulticastLock;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Build;
-import android.text.Html;
-import android.text.SpannableString;
-import android.text.method.LinkMovementMethod;
-import android.text.util.Linkify;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.ViewGroup;
-import android.widget.TextView;
 import android.widget.Toast;
 import android.os.Handler;
 import java.nio.file.Paths;
@@ -185,35 +174,7 @@ public class PdDroidParty extends AppCompatActivity implements SharedPreferences
 	public boolean onOptionsItemSelected(MenuItem item) {
 		int id = item.getItemId();
 		if (id == R.id.about) {
-			// load in the about dialog contents from assets/about.html
-			StringBuffer sb = new StringBuffer();
-			try {
-				AssetManager assets = getAssets();
-				InputStreamReader reader = new InputStreamReader(assets.open("about.html"), "UTF-8");
-				BufferedReader br = new BufferedReader(reader);
-				String line = br.readLine();
-				while(line != null) {
-					sb.append(line + "\n");
-					line = br.readLine();
-				}
-				sb.append("Pure Data version: " + PdVersionString.get());
-			} catch (IOException e) {
-				sb.append("Copyright Chris McCormick, 2011");
-			}
-
-			// convert the string to HTML for the about dialog
-			final SpannableString s = new SpannableString(Html.fromHtml(sb.toString()));
-			Linkify.addLinks(s, Linkify.ALL);
-
-			AlertDialog ab = new AlertDialog.Builder(this)
-			.setTitle("About")
-			.setIcon(android.R.drawable.ic_dialog_info)
-			.setMessage(s)
-			.setPositiveButton("ok", null)
-			.create();
-			ab.show();
-			// make the links clickable
-			((TextView)ab.findViewById(android.R.id.message)).setMovementMethod(LinkMovementMethod.getInstance());
+			About.open(this);
 		} else if (id == R.id.exit) {
 			finish();
 		} else if (id == R.id.midi) {
