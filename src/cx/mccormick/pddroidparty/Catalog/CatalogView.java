@@ -152,7 +152,11 @@ public class CatalogView {
 			if (imageView != null) {
 				if(n == current) imageView.setImageResource(R.drawable.ic_menu_back);
 				else {
-					if(n instanceof Group) imageView.setImageResource(R.drawable.ic_menu_archive);
+					if(n instanceof Group) {
+						if(n.link != null && n.link.fromLinksTxt == true)
+							imageView.setImageResource(R.drawable.ic_menu_archive_online);
+						else imageView.setImageResource(R.drawable.ic_menu_archive);
+					}
 					else if(n.file == null) imageView.setImageResource(R.drawable.download);
 					else imageView.setImageResource(R.drawable.icon);
 				}
@@ -191,24 +195,43 @@ public class CatalogView {
 	private void showMenu(Node node) {
 		PopupMenu popup = new PopupMenu(context, view);
 		popup.getMenuInflater().inflate(R.menu.catalog_context, popup.getMenu());
+		if(node instanceof Item) {
+			if(node.file != null) {
+				popup.getMenu().findItem(R.id.delete).setVisible(true);
+				popup.getMenu().findItem(R.id.check_updates).setVisible(true);
+			} else {
+				popup.getMenu().findItem(R.id.install).setVisible(true);
+			}
+		}
 		popup.setOnMenuItemClickListener(new OnMenuItemClickListener() {
 			@Override
 			public boolean onMenuItemClick(MenuItem item) {
 				int id = item.getItemId();
 				if(id == R.id.install) {
-					Log.d(TAG, "install " + node.getPath());
+					if(node instanceof Item && node.link != null) {
+						Log.d(TAG, "install " + node.getPath());
+						installPdz(node.name, node.parent.getPath(), node.link.url.toString());
+					}
 					return true;
 				} else if(id == R.id.check_updates) {
-					Log.d(TAG, "check updates " + node.getPath());
+					if(node instanceof Item && node.link != null) {
+						Log.d(TAG, "check updates " + node.getPath());
+						installPdz(node.name, node.parent.getPath(), node.link.url.toString());
+					}
 					return true;
 				} else if(id == R.id.delete) {
 					Log.d(TAG, "delete " + node.getPath());
+					if(node instanceof Item && node.file != null) {
+						PatchUtils.deleteDirectory(node.file);
+						node.file = null;
+						refresh();
+					}
 					return true;
 				}
 				return false;
 			}
 		});
-		popup.show();
+		if(popup.getMenu().hasVisibleItems()) popup.show();
 	}
 
 	public void runPatchDir(String patchDir) {}
