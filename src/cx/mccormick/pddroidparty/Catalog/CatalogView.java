@@ -22,6 +22,7 @@ import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.PopupMenu;
 import android.widget.PopupMenu.OnMenuItemClickListener;
+import android.os.Handler;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.activity.ComponentActivity;
@@ -39,8 +40,18 @@ public class CatalogView {
 	private Context context;
 	private ListView view;
 
+	private final int REFRESH_DELAY_MS = 200;
+
 	CatalogView(AppCompatActivity activity, String rootPath) {
-		root = new Group("", null);
+		root = new Group("", null) {
+			private Object refreshToken = new Object();
+			private Handler handler = new Handler();
+			@Override
+			public void refresh() {
+				handler.removeCallbacksAndMessages(refreshToken);
+				handler.postDelayed(() -> CatalogView.this.refresh(), refreshToken, REFRESH_DELAY_MS);
+			}
+		};
 		root.file = new File(rootPath);
 		current = root;
 		context = activity;
@@ -54,13 +65,13 @@ public class CatalogView {
 				// return to parent directory
 				if(n == current) {
 					if(current.parent != null) current = current.parent;
-					update();
+					refresh();
 					return;
 				}
 				// enter directory
 				if(n instanceof Group) {
 					current = (Group)n;
-					update();
+					refresh();
 					return;
 				}
 				else {
@@ -88,20 +99,20 @@ public class CatalogView {
 
 		activity.getOnBackPressedDispatcher().addCallback(backPressedCallback);
 
-		scan();
-		update();
+		root.scan(true);
+		refresh();
 	}
 
 	private OnBackPressedCallback backPressedCallback = new OnBackPressedCallback(false) {
 		@Override
 		public void handleOnBackPressed() {
 			if(current.parent != null) current = current.parent;
-			update();
+			refresh();
 		}
 	};
 
 	public void scan() {
-		root.scan();
+		current.scan(false);
 	}
 
 	public void print() {
@@ -158,7 +169,8 @@ public class CatalogView {
 		});
 	}
 
-	public void update() {
+	public void refresh() {
+		current.scan(false);
 		List<Node> list = new ArrayList<Node>();
 		if(current.parent != null) list.add(current);
 		// patches first

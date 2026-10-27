@@ -26,6 +26,7 @@ public class Catalog {
 		public String name;
 		public URL url = null;
 		boolean fromLinksTxt = false;
+		boolean scanned = false;
 		Link(String name, URL url) {
 			this.name = name;
 			this.url = url;
@@ -40,6 +41,8 @@ public class Catalog {
 
 		@Override
 		public void scan(Group group) {
+			if(scanned) return;
+			scanned = true;
 			if(group.depth() >= MAX_DEPTH) return;
 			new StringDownloader(){
 				@Override
@@ -54,7 +57,6 @@ public class Catalog {
 							if(objType.equals("dir")) {
 								Group n = group.getGroup(objName);
 								n.link = new GhLink(name, new URL(object.getString("url")));
-								n.link.scan(n);
 							} else {
 								URL objUrl = new URL(object.getString("download_url"));
 								Log.d(TAG, objName + " type:" + objType);
@@ -97,11 +99,12 @@ public class Catalog {
 	public static void processLinkLine(String linksLine, Group parent) {
 		Link link = buildLink(linksLine);
 		if(link != null) {
-			Log.d(TAG, "found link in " + parent.getPath() + ": " + link.name);
 			link.fromLinksTxt = true;
 			Group n = parent.getGroup(link.name);
-			n.link = link;
-			link.scan(n);
+			if(n.link == null) {
+				Log.d(TAG, "add link: '" + link.name + "' to " + parent.getPath());
+				n.link = link;
+			}
 		}
 	}
 	// ----------------------------------------------------------//
@@ -162,6 +165,7 @@ public class Catalog {
 		}
 
 		public boolean containsItems() {
+			if(link != null && ! link.scanned) return true;
 			if(items.size() != 0) return true;
 			else for(Group n: groups) {
 				if(n.containsItems()) return true;
@@ -177,6 +181,12 @@ public class Catalog {
 				i++;
 			}
 			return i;
+		}
+
+		public Group getRoot() {
+			Group g = this;
+			while(g.parent != null) g = g.parent;
+			return g;
 		}
 
 		private static boolean isPatchDir(File dir) {
@@ -225,6 +235,7 @@ public class Catalog {
 			if(n == null) {
 				n = new Group(name, this);
 				groups.add(n);
+				getRoot().refresh();
 			}
 			return n;
 		}
@@ -239,7 +250,8 @@ public class Catalog {
 			} catch(Exception e) {}
 		}
 
-		public void scan() {
+		public void scan(boolean recursive) {
+			if(link != null && ! recursive) link.scan(this);
 			if(file == null) return;
 			if(!file.isDirectory()) return;
 			if(depth() >= MAX_DEPTH) return;
@@ -252,7 +264,7 @@ public class Catalog {
 					} else {
 						Group n = getGroup(f.getName());
 						n.file = f;
-						n.scan();
+						if(recursive) n.scan(true);
 					}
 				} else if(f.getName().equals("links.txt")) {
 					processLinksFile(f);
@@ -271,5 +283,7 @@ public class Catalog {
 			}
 			return s;
 		}
+
+		public void refresh() {}
 	}
 }

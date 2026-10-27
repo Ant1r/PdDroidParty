@@ -194,8 +194,7 @@ public class PatchSelector extends AppCompatActivity {
 				Log.d(TAG, "processZip() creating dir " + patchesPath + destDirPath);
 				new File(patchesPath + destDirPath).mkdirs();
 				Files.move(new File(tempPath + patchName).toPath(), new File(patchPath).toPath(), REPLACE_EXISTING);
-				catalog.scan();
-				catalog.update();
+				catalog.refresh();
 				launchDroidParty(patchPath, true);
 			} catch(Exception e) {
 				Log.e(TAG, "processZip() exception: " + e.toString());
@@ -226,8 +225,7 @@ public class PatchSelector extends AppCompatActivity {
 						new File(patchesPath + destDirPath).mkdirs();
 						PatchUtils.deleteDirectory(new File(patchPath));
 						Files.move(new File(tempPath + patchName).toPath(), new File(patchPath).toPath(), REPLACE_EXISTING);
-						catalog.scan();
-						catalog.update();
+						catalog.refresh();
 						launchDroidParty(patchPath, true);
 					} catch(Exception e) {
 						Log.e(TAG, "processZip() exception: " + e.toString());
