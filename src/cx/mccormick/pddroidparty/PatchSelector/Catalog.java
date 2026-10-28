@@ -40,6 +40,33 @@ public class Catalog {
 			super(name, url);
 		}
 
+		private void parseJSONArray(JSONArray json, Group group) {
+				for(int i = 0; i < json.length(); i++) {
+				try {
+						JSONObject object = json.getJSONObject(i);
+						String objType = object.optString("type", "?");
+						String objName = object.getString("name");
+						if(objType.equals("dir")) {
+							Group n = group.getGroup(objName);
+							n.link = new GhLink(name, new URL(object.getString("url")));
+						} else {
+							String downloadUrl = object.optString("download_url", object.optString("browser_download_url", null));
+							if(downloadUrl == null) continue;
+							URL objUrl = new URL(downloadUrl);
+							if(objName.endsWith(".pdz")) {
+								String patchName = objName.substring(0, objName.length() - 4);
+								Item n = group.get(patchName);
+								n.link = new Link(patchName, objUrl);
+							} else if(objName.equals("links.txt")) {
+								processLinksFileUrl(objUrl, group);
+							}
+						}
+					} catch(Exception e) {
+					Log.d(TAG, "GhLink.parseJSONArray() exception: " + e.toString());
+				}
+			}
+		}
+
 		@Override
 		public void scan(Group group) {
 			if(scanned) return;
@@ -48,31 +75,24 @@ public class Catalog {
 			new StringDownloader(){
 				@Override
 				protected void onPostExecute(String downloadedString) {
+					Log.d(TAG, "json of link " + group.getPath() + " downloaded, parsing it.");
 					try {
-						Log.d(TAG, "json of link " + group.getPath() + " downloaded, parsing it:");
 						JSONArray json = new JSONArray(downloadedString);
-						for(int i = 0; i < json.length(); i++) {
-							JSONObject object = json.getJSONObject(i);
-							String objType = object.optString("type", "?");
-							String objName = object.getString("name");
-							if(objType.equals("dir")) {
-								Group n = group.getGroup(objName);
-								n.link = new GhLink(name, new URL(object.getString("url")));
-							} else {
-								URL objUrl = new URL(object.getString("download_url"));
-								Log.d(TAG, objName + " type:" + objType);
-								if(objName.endsWith(".pdz")) {
-									String patchName = objName.substring(0, objName.length() - 4);
-									Item n = group.get(patchName);
-									n.link = new Link(patchName, objUrl);
-								} else if(objName.equals("links.txt")) {
-									processLinksFileUrl(objUrl, group);
-								}
-							}
+						parseJSONArray(json, group);
+					} catch(Exception e) {}
+					try {
+						JSONObject json = new JSONObject(downloadedString);
+						JSONArray assetsJson = json.optJSONArray("assets");
+						if(assetsJson != null) {
+							//Log.d(TAG, "GhLink.scan() got assets");
+							parseJSONArray(assetsJson, group);
 						}
-					} catch(Exception e) {
-						Log.d(TAG, "GhLink.scan() exception: " + e.toString());
-					}
+						String body = json.optString("body", null);
+						if(body != null) {
+							//Log.d(TAG, "GhLink.scan() got body: " + body);
+							processLinksString(body, group);
+						}
+					} catch(Exception e) {}
 				}
 			}.execute(url);
 		}
@@ -91,16 +111,6 @@ public class Catalog {
 			if(group.depth() >= MAX_DEPTH) return;
 			processLinksFileUrl(url, group);
 		}
-	}
-
-	private static void processLinksFileUrl(URL url, Group group) {
-		new StringDownloader(){
-			@Override
-			protected void onPostExecute(String downloadedString) {
-				String[] lines = downloadedString.split("[\\r\\n]+");
-				for(String line: lines) processLinkLine(line, group);
-			}
-		}.execute(url);
 	}
 
 	private static Link buildLink(String linksLine) {
@@ -141,6 +151,34 @@ public class Catalog {
 			}
 		}
 	}
+
+	private static void processLinksString(String linksString, Group group) {
+		String[] lines = linksString.split("[\\r\\n]+");
+		int firstLine = 0;
+		int lastLine = lines.length - 1;
+		for(int i = 0; i < lines.length; i++) {
+			if(lines[i].startsWith("# LINKS")) {
+				firstLine = i + 1;
+			}
+			else if(lines[i].startsWith("# ENDLINKS")) {
+				lastLine = i - 1;
+			}
+		}
+		if(firstLine < lines.length && lastLine >= 0 && firstLine <= lastLine)
+			for(int i = firstLine; i <= lastLine; i++) {
+				processLinkLine(lines[i], group);
+			}
+	}
+
+	private static void processLinksFileUrl(URL url, Group group) {
+		new StringDownloader(){
+			@Override
+			protected void onPostExecute(String downloadedString) {
+				processLinksString(downloadedString, group);
+			}
+		}.execute(url);
+	}
+
 	// ----------------------------------------------------------//
 
 	public static class Node {
