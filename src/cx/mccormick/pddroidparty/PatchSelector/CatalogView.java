@@ -139,8 +139,14 @@ public class CatalogView {
 			}
 			ImageView imageView = (ImageView) convertView.findViewById(R.id.icon);
 			if (imageView != null) {
-				if(n == current) imageView.setImageResource(R.drawable.ic_menu_back);
-				else {
+				if(n == current) {
+					imageView.setImageResource(R.drawable.ic_menu_back);
+					TextView pathText = (TextView) convertView.findViewById(R.id.path);
+					if(pathText != null && n.parent != null) {
+						pathText.setText(n.parent.getPath() + "/");
+						pathText.setVisibility(1);
+					}
+				} else {
 					if(n instanceof Group) {
 						if(n.link != null && n.link.fromLinksTxt == true)
 							imageView.setImageResource(R.drawable.ic_menu_archive_online);
