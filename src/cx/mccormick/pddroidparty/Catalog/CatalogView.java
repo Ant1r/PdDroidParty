@@ -34,7 +34,7 @@ import cx.mccormick.pddroidparty.Catalog.*;
 import cx.mccormick.pddroidparty.databinding.CatalogItemBinding;
 
 public class CatalogView {
-	public static final String TAG = "CatalogView";
+	private static final String TAG = "CatalogView";
 	private Group root;
 	private Group current;
 	private Context context;
@@ -44,12 +44,9 @@ public class CatalogView {
 
 	CatalogView(AppCompatActivity activity, String rootPath) {
 		root = new Group("", null) {
-			private Object refreshToken = new Object();
-			private Handler handler = new Handler();
 			@Override
 			public void refresh() {
-				handler.removeCallbacksAndMessages(refreshToken);
-				handler.postDelayed(() -> CatalogView.this.refresh(), refreshToken, REFRESH_DELAY_MS);
+				scheduleRefresh();
 			}
 		};
 		root.file = new File(rootPath);
@@ -119,7 +116,7 @@ public class CatalogView {
 		Log.d(TAG, "catalog: \n" + root.print(""));
 	}
 
-	public class CatalogAdapter extends ArrayAdapter<Node> {
+	private class CatalogAdapter extends ArrayAdapter<Node> {
 
 		private int resourceLayout;
 		private Context mContext;
@@ -173,7 +170,7 @@ public class CatalogView {
 		});
 	}
 
-	public void refresh() {
+	private void refresh() {
 		current.scan(false);
 		List<Node> list = new ArrayList<Node>();
 		if(current.parent != null) list.add(current);
@@ -190,6 +187,20 @@ public class CatalogView {
 		view.setAdapter(adapter);
 		backPressedCallback.setEnabled(current.parent != null);
 		if(current.parent == null) print();
+	}
+
+	private class RefreshScheduler {
+		private Object refreshToken = new Object();
+		private Handler handler = new Handler();
+		public void refresh() {
+			handler.removeCallbacksAndMessages(refreshToken);
+			handler.postDelayed(() -> CatalogView.this.refresh(), refreshToken, REFRESH_DELAY_MS);
+		}
+	}
+	private RefreshScheduler refreshScheduler = new RefreshScheduler();
+
+	public void scheduleRefresh() {
+		refreshScheduler.refresh();
 	}
 
 	private void showMenu(Node node) {
