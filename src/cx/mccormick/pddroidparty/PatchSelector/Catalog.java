@@ -181,7 +181,7 @@ public class Catalog {
 
 	// ----------------------------------------------------------//
 
-	public static class Node {
+	public static abstract class Node {
 		public String name;
 		public Group parent;
 		public File file = null;
@@ -196,19 +196,12 @@ public class Catalog {
 			return getPath("/");
 		}
 
-		public String prefix() {
-			String p = "*  ";
-			if(link != null) {
-				if(file != null) p = "+  ";
-				else p = "-  ";
-			}
-			return p;
-		}
-
 		Node(String name, Group parent) {
 			this.name = name;
 			this.parent = parent;
+			if(parent != null) file = new File(parent.file, name);
 		}
+		public abstract String prefix();
 	}
 
 	public static class Item extends Node {
@@ -216,6 +209,16 @@ public class Catalog {
 			super(name, parent);
 			Log.d(TAG, "creating item: " + name + " in group: " + parent.getPath());
 		}
+		
+		public String prefix() {
+			String p = "*  ";
+			if(link != null) {
+				if(file.exists()) p = "+  ";
+				else p = "-  ";
+			}
+			return p;
+		}
+
 	}
 
 	public static class Group extends Node {
@@ -315,7 +318,6 @@ public class Catalog {
 
 		public void scan(boolean recursive) {
 			if(link != null && ! recursive) link.scan(this);
-			if(file == null) return;
 			if(!file.isDirectory()) return;
 			if(depth() >= MAX_DEPTH) return;
 			File[] files = file.listFiles();
@@ -323,10 +325,8 @@ public class Catalog {
 				if(f.isDirectory()) {
 					if(isPatchDir(f)) {
 						Item n = get(f.getName());
-						n.file = f;
 					} else {
 						Group n = getGroup(f.getName());
-						n.file = f;
 						if(recursive) n.scan(true);
 					}
 				} else if(f.getName().equals("links.txt")) {

@@ -72,7 +72,7 @@ public class CatalogView {
 				}
 				else {
 					// run or install
-					if(n.file != null) {
+					if(n.file.exists()) {
 						runPatchDir(n.file.getPath());
 					} else {
 						if(n.link != null && n.parent != null) {
@@ -152,7 +152,7 @@ public class CatalogView {
 							imageView.setImageResource(R.drawable.ic_menu_archive_online);
 						else imageView.setImageResource(R.drawable.ic_menu_archive);
 					}
-					else if(n.file == null) imageView.setImageResource(R.drawable.download);
+					else if(! n.file.exists()) imageView.setImageResource(R.drawable.download);
 					else imageView.setImageResource(R.drawable.icon);
 				}
 			}
@@ -207,7 +207,7 @@ public class CatalogView {
 		PopupMenu popup = new PopupMenu(context, view);
 		popup.getMenuInflater().inflate(R.menu.catalog_context, popup.getMenu());
 		if(node instanceof Item) {
-			if(node.file != null) {
+			if(node.file.exists()) {
 				popup.getMenu().findItem(R.id.delete).setVisible(true);
 				popup.getMenu().findItem(R.id.check_updates).setVisible(true);
 			} else {
@@ -232,9 +232,8 @@ public class CatalogView {
 					return true;
 				} else if(id == R.id.delete) {
 					Log.d(TAG, "delete " + node.getPath());
-					if(node instanceof Item && node.file != null) {
+					if(node instanceof Item && node.file.exists()) {
 						PatchUtils.deleteDirectory(node.file);
-						node.file = null;
 						refresh();
 					}
 					return true;
