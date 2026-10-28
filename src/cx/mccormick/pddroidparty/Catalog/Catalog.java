@@ -26,6 +26,7 @@ public class Catalog {
 		public String name;
 		public URL url = null;
 		boolean fromLinksTxt = false;
+		boolean isPdz = false;
 		boolean scanned = false;
 		Link(String name, URL url) {
 			this.name = name;
@@ -76,34 +77,67 @@ public class Catalog {
 			}.execute(url);
 		}
 
-		private static void processLinksFileUrl(URL url, Group group) {
-			new StringDownloader(){
-				@Override
-				protected void onPostExecute(String downloadedString) {
-					String[] lines = downloadedString.split("[\\r\\n]+");
-					for(String line: lines) processLinkLine(line, group);
-				}
-			}.execute(url);
+	}
+
+	public static class LinkLink extends Link {
+		LinkLink(String name, URL url) {
+			super(name, url);
+		}
+
+		@Override
+		public void scan(Group group) {
+			if(scanned) return;
+			scanned = true;
+			if(group.depth() >= MAX_DEPTH) return;
+			processLinksFileUrl(url, group);
 		}
 	}
 
-	public static Link buildLink(String linksLine) {
+	private static void processLinksFileUrl(URL url, Group group) {
+		new StringDownloader(){
+			@Override
+			protected void onPostExecute(String downloadedString) {
+				String[] lines = downloadedString.split("[\\r\\n]+");
+				for(String line: lines) processLinkLine(line, group);
+			}
+		}.execute(url);
+	}
+
+	private static Link buildLink(String linksLine) {
 		String[] words = linksLine.split(" ");
-		if(words[0].equals("gh")) try {
-			URL url = new URL(words[2]);
-			return new GhLink(words[1], url);
+		if(words.length < 3) return null;
+		try {
+			if(words[0].equals("gh")) {
+				URL url = new URL(words[2]);
+				return new GhLink(words[1], url);
+			} else if(words[0].equals("pdz")) {
+				URL url = new URL(words[2]);
+				Link link = new Link(words[1], url);
+				link.isPdz = true;
+				return link;
+			} else if(words[0].equals("links")) {
+				URL url = new URL(words[2]);
+				return new LinkLink(words[1], url);
+			}
 		} catch(Exception e) { return null;}
 		return null;
 	}
 
-	public static void processLinkLine(String linksLine, Group parent) {
+	private static void processLinkLine(String linksLine, Group parent) {
 		Link link = buildLink(linksLine);
 		if(link != null) {
 			link.fromLinksTxt = true;
-			Group n = parent.getGroup(link.name);
+			Node n;
+			if(link.isPdz) n = parent.get(link.name);
+			else n = parent.getGroup(link.name);
 			if(n.link == null) {
-				Log.d(TAG, "add link: '" + link.name + "' to " + parent.getPath());
 				n.link = link;
+				String linktype = "none";
+				if(link.isPdz) linktype = "pdz";
+				else if(link instanceof GhLink) linktype = "gh";
+				else if(link instanceof LinkLink) linktype = "link";
+				Log.d(TAG, "add '" + linktype + "' link: '" + link.name + "' to " + parent.getPath());
+				parent.getRoot().refresh();
 			}
 		}
 	}
@@ -209,18 +243,9 @@ public class Catalog {
 			if(n == null) {
 				n = new Item(name, this);
 				items.add(n);
+				getRoot().refresh();
 			}
 			return n;
-		}
-
-		public Node findWithPrefix(String name) {
-			for(Node n: items) {
-				if(name.equals(n.prefix() + n.name)) return n;
-			}
-			for(Node n: groups) {
-				if(name.equals(n.prefix() + n.name)) return n;
-			}
-			return null;
 		}
 
 		public Group findGroup(String name) {
