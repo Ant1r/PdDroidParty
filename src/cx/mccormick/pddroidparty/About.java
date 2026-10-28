@@ -15,7 +15,7 @@ import android.widget.TextView;
 
 import org.puredata.core.PdBase;
 
-class About {
+public class About {
 	public static void open(Activity activity) {
 		// load in the about dialog contents from assets/about.html
 		StringBuffer sb = new StringBuffer();

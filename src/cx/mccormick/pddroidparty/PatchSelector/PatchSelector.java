@@ -1,4 +1,4 @@
-package cx.mccormick.pddroidparty;
+package cx.mccormick.pddroidparty.PatchSelector;
 
 /* Based on SceneSelection code by Peter Brinkmann (thanks!) */
 
@@ -54,6 +54,11 @@ import androidx.appcompat.widget.Toolbar;
 import com.larvalabs.svgandroid.SVG;
 import com.larvalabs.svgandroid.SVGParser;
 
+import cx.mccormick.pddroidparty.R;
+import cx.mccormick.pddroidparty.PdDroidParty;
+import cx.mccormick.pddroidparty.About;
+
+
 public class PatchSelector extends AppCompatActivity {
 
 	Resources res = null;
@@ -75,7 +80,7 @@ public class PatchSelector extends AppCompatActivity {
 		handler = new Handler();
 
 		checkIsFirstRun();
-		Log.d(TAG, "Pd version: " + PdVersionString.get());
+		Log.d(TAG, "Pd version: " + PdBase.versionString());
 		// if we have a baked patch, jump straight into Pd initialisation
 		if (testForBakedPatch()) {
 			runBackedPatch();

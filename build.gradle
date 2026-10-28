@@ -8,10 +8,6 @@ buildscript {
     }
 }
 
-plugins {
-    id 'org.jetbrains.kotlin.android' version '1.8.10'
-}
-
 allprojects {
     repositories {
         google()
@@ -102,8 +98,6 @@ android {
         // Extract native libs from prefab, to be able to access the headers and to link to the libs
         prefab = true
         viewBinding = true
-        // Enable data binding
-        dataBinding = true
     }
 
     packagingOptions {

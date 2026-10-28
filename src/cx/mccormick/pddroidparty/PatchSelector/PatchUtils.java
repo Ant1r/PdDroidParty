@@ -1,4 +1,4 @@
-package cx.mccormick.pddroidparty;
+package cx.mccormick.pddroidparty.PatchSelector;
 
 import java.io.IOException;
 import java.io.File;

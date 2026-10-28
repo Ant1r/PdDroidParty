@@ -1,4 +1,4 @@
-package cx.mccormick.pddroidparty;
+package cx.mccormick.pddroidparty.PatchSelector;
 
 import java.io.IOException;
 import java.io.File;
@@ -28,10 +28,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.activity.ComponentActivity;
 import androidx.activity.OnBackPressedCallback;
 
-import androidx.databinding.DataBindingUtil;
-
-import cx.mccormick.pddroidparty.Catalog.*;
-import cx.mccormick.pddroidparty.databinding.CatalogItemBinding;
+import cx.mccormick.pddroidparty.R;
+import cx.mccormick.pddroidparty.PatchSelector.Catalog.*;
 
 public class CatalogView {
 	private static final String TAG = "CatalogView";
@@ -39,6 +37,7 @@ public class CatalogView {
 	private Group current;
 	private Context context;
 	private ListView view;
+	private List<Node> displayedList = new ArrayList<Node>();
 
 	private final int REFRESH_DELAY_MS = 200;
 
@@ -57,7 +56,7 @@ public class CatalogView {
 		view.setOnItemClickListener(new OnItemClickListener() {
 			@Override
 			public void onItemClick(AdapterView<?> arg0, View v, int position, long id) {
-				Node n = ((CatalogItemBinding)DataBindingUtil.getBinding(v)).getNode();
+				Node n = displayedList.get(position);
 				if(n == null) return;
 				// return to parent directory
 				if(n == current) {
@@ -87,7 +86,7 @@ public class CatalogView {
 		view.setOnItemLongClickListener(new OnItemLongClickListener() {
 			@Override
 			public boolean onItemLongClick(AdapterView<?> arg0, View v, int position, long id) {
-				Node n = ((CatalogItemBinding)DataBindingUtil.getBinding(v)).getNode();
+				Node n = displayedList.get(position);
 				Log.d(TAG, "long click on: " + n.getPath());
 				showMenu(n);
 				return true;
@@ -129,17 +128,10 @@ public class CatalogView {
 
 		@Override
 		public View getView(int position, View convertView, ViewGroup parent) {
-			CatalogItemBinding binding;
 			if(convertView == null) {
-				binding = CatalogItemBinding.inflate(LayoutInflater.from(getContext()), parent, false);
-				convertView = binding.getRoot();
-			}
-			else {
-				binding = (CatalogItemBinding) convertView.getTag();
+				convertView = LayoutInflater.from(getContext()).inflate(resourceLayout, parent, false);
 			}
 			Node n = getItem(position);
-			binding.setNode(n);
-			convertView.setTag(binding);
 
 			TextView textView = (TextView) convertView.findViewById(R.id.name);
 			if (textView != null) {
@@ -171,19 +163,21 @@ public class CatalogView {
 	}
 
 	private void refresh() {
+		Log.d(TAG, "refreshing " + current.getPath());
 		current.scan(false);
-		List<Node> list = new ArrayList<Node>();
-		if(current.parent != null) list.add(current);
+		displayedList.clear();
+		// if not root, add 'go back' item
+		if(current.parent != null) displayedList.add(current);
 		// patches first
 		sortNodeList(current.items);
-		list.addAll(current.items);
+		displayedList.addAll(current.items);
 		// then non-empty dirs
 		sortNodeList(current.groups);
 		for(Group n: current.groups) {
-			if(n.containsItems()) list.add(n);
+			if(n.containsItems()) displayedList.add(n);
 		}
 		final CatalogAdapter adapter = 
-			new CatalogAdapter(R.layout.catalog_item, list);
+			new CatalogAdapter(R.layout.catalog_item, displayedList);
 		view.setAdapter(adapter);
 		backPressedCallback.setEnabled(current.parent != null);
 		if(current.parent == null) print();
