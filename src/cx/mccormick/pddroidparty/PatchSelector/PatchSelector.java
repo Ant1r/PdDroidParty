@@ -131,7 +131,14 @@ public class PatchSelector extends AppCompatActivity {
 						@Override
 						protected void onPostExecute(String zipFile) {
 							super.onPostExecute(zipFile);
-							processZip(zipFile, "", null);
+							if(zipFile != null) {
+								processZip(zipFile, "", null);
+							} else {
+								Toast.makeText(PatchSelector.this,
+									"Couldn't download the pdz file!",
+									Toast.LENGTH_LONG)
+									.show();
+							}
 						}
 					}.execute(data.toString());
 					return;
@@ -430,8 +437,15 @@ public class PatchSelector extends AppCompatActivity {
 					@Override
 					protected void onPostExecute(String zipFile) {
 						super.onPostExecute(zipFile);
-						Log.d(TAG, zipFile + " successfully downloaded...");
-						processZip(zipFile, path, name);
+						if(zipFile != null) {
+							Log.d(TAG, zipFile + " successfully downloaded...");
+							processZip(zipFile, path, name);
+						} else {
+							Toast.makeText(PatchSelector.this,
+								"Couldn't download the pdz file!",
+								Toast.LENGTH_LONG)
+								.show();
+						}
 					}
 				}.execute(url);
 			}
