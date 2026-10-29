@@ -37,6 +37,7 @@
         <activity android:name=".SaveDialog" android:theme="@android:style/Theme.Dialog" android:configChanges="orientation" android:label="Save"></activity>
         <activity android:name=".LoadDialog" android:theme="@android:style/Theme.Dialog" android:configChanges="orientation" android:label="Load"></activity>
         <activity android:label="Audio Preferences" android:name="org.puredata.android.service.PdPreferences" />
+        <activity android:name=".PatchSelector.LinksEditor" android:theme="@android:style/Theme.Dialog" android:configChanges="orientation" android:label="Edit links"></activity>
 
         <service android:name="org.puredata.android.service.PdService" android:foregroundServiceType="mediaPlayback|microphone"/>
     </application>

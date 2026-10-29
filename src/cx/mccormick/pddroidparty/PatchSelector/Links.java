@@ -137,6 +137,7 @@ public class Links {
 	}
 
 	private static void processLinksString(String linksString, Group group) {
+		if(linksString == null || group == null) return;
 		String[] lines = linksString.split("[\\r\\n]+");
 		int firstLine = 0;
 		int lastLine = lines.length - 1;

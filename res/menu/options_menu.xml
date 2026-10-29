@@ -6,6 +6,10 @@
 		  android:title="@string/rescan_catalog"
 		  android:visible ="false"
 	/>
+	<item android:id="@+id/edit_links"
+		  android:title="@string/edit_links"
+		  android:visible ="false"
+	/>
 	<item android:id="@+id/midi"
 		  android:title="@string/midi" />
 	<item android:id="@+id/audio"

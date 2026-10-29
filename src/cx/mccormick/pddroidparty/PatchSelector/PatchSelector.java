@@ -61,6 +61,9 @@ import cx.mccormick.pddroidparty.About;
 
 public class PatchSelector extends AppCompatActivity {
 
+	static final String TAG = "PatchSelector";
+	public static final int REQUESTCODE_LINKS_EDITOR = 1;
+
 	Resources res = null;
 	Handler handler;
 	private static long SPLASHTIME = 2000;
@@ -68,7 +71,6 @@ public class PatchSelector extends AppCompatActivity {
 	private boolean isFirstRun = false;
 	private boolean isNewInstall = false;
 	Intent alreadyProcessedIntent = null;
-	static final String TAG = "PatchSelector";
 	String patchesPath;
 	CatalogView catalog = null;
 
@@ -162,6 +164,7 @@ public class PatchSelector extends AppCompatActivity {
 		getMenuInflater().inflate(R.menu.options_menu, menu);
 		menu.findItem(R.id.midi).setVisible(false);
 		menu.findItem(R.id.rescan_catalog).setVisible(true);
+		menu.findItem(R.id.edit_links).setVisible(true);
 		return true;
 	}
 
@@ -178,8 +181,19 @@ public class PatchSelector extends AppCompatActivity {
 			startActivity(new Intent(this, PdPreferences.class));
 		} else if(id == R.id.rescan_catalog) {
 			catalog.initRoot();
+		} else if(id == R.id.edit_links) {
+			LinksEditor.run(this, REQUESTCODE_LINKS_EDITOR, patchesPath + "links.txt");
 		}
 		return super.onOptionsItemSelected(item);
+	}
+
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		super.onActivityResult(requestCode, resultCode, data);
+		if (requestCode == REQUESTCODE_LINKS_EDITOR) {
+			LinksEditor.onResult(resultCode, data);
+			if(resultCode == RESULT_OK) catalog.initRoot();
+		}
 	}
 
 	private void processContentUri(Uri data) {

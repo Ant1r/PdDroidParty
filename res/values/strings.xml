@@ -13,4 +13,6 @@
 	<string name="audio">Audio</string>
 	<string name="exit">Exit</string>
 	<string name="rescan_catalog">Rescan catalog</string>
+	<string name="edit_links">Edit links</string>
+	<string name="links_hint">add your links here...</string>
 </resources>
