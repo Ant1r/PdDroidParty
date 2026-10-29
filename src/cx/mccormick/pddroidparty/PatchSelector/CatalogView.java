@@ -26,23 +26,17 @@ import cx.mccormick.pddroidparty.PatchSelector.Nodes.*;
 
 public class CatalogView {
 	private static final String TAG = "CatalogView";
-	private final Group root;
+	private Group root;
 	private Group current;
 	private final Context context;
 	private final ListView view;
 	private final List<Node> displayedList = new ArrayList<Node>();
 	private final CatalogAdapter adapter;
 	private final int REFRESH_DELAY_MS = 200;
+	private final String rootPath;
 
 	CatalogView(AppCompatActivity activity, String rootPath) {
-		root = new Group("", null) {
-			@Override
-			public void refresh() {
-				scheduleRefresh();
-			}
-		};
-		root.file = new File(rootPath);
-		current = root;
+		this.rootPath = rootPath;
 		context = activity;
 
 		view = (ListView) activity.findViewById(R.id.patch_selector);
@@ -53,14 +47,12 @@ public class CatalogView {
 				if(n == null) return;
 				// return to parent directory
 				if(n == current) {
-					if(current.parent != null) current = current.parent;
-					refresh();
+					gotoNode(current.parent);
 					return;
 				}
 				// enter directory
 				if(n instanceof Group) {
-					current = (Group)n;
-					refresh();
+					gotoNode((Group)n);
 					return;
 				}
 				else {
@@ -91,24 +83,40 @@ public class CatalogView {
 
 		activity.getOnBackPressedDispatcher().addCallback(backPressedCallback);
 
-		root.scan(true);
-		refresh();
+		initRoot();
 	}
 
 	private OnBackPressedCallback backPressedCallback = new OnBackPressedCallback(false) {
 		@Override
 		public void handleOnBackPressed() {
-			if(current.parent != null) current = current.parent;
-			refresh();
+			gotoNode(current.parent);
 		}
 	};
 
+	public void initRoot() {
+		current = root = new Group("", null) {
+			@Override
+			public void refresh() {
+				scheduleRefresh();
+			}
+		};
+		root.file = new File(rootPath);
+		root.scan(true);
+	}
+	
 	public void scan() {
 		current.scan(false);
 	}
 
 	public void print() {
 		Log.d(TAG, "catalog: \n" + root.print(""));
+	}
+
+	public void gotoNode(Group group) {
+		if(group == null) return;
+		Log.d(TAG, "goto: " + group.getPath());
+		current = group;
+		refresh();
 	}
 
 	private static void sortNodeList(List<? extends Node> list) {

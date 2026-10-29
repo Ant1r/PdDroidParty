@@ -12,4 +12,5 @@
 	<string name="midi">Midi</string>
 	<string name="audio">Audio</string>
 	<string name="exit">Exit</string>
+	<string name="rescan_catalog">Rescan catalog</string>
 </resources>

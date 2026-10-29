@@ -160,9 +160,8 @@ public class PatchSelector extends AppCompatActivity {
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		getMenuInflater().inflate(R.menu.options_menu, menu);
-		//if (! getPackageManager().hasSystemFeature(PackageManager.FEATURE_MIDI)) {
-			menu.findItem(R.id.midi).setVisible(false);
-		//}
+		menu.findItem(R.id.midi).setVisible(false);
+		menu.findItem(R.id.rescan_catalog).setVisible(true);
 		return true;
 	}
 
@@ -177,6 +176,8 @@ public class PatchSelector extends AppCompatActivity {
 			midi.menuClicked(this);
 		}*/ else if(id == R.id.audio) {
 			startActivity(new Intent(this, PdPreferences.class));
+		} else if(id == R.id.rescan_catalog) {
+			catalog.initRoot();
 		}
 		return super.onOptionsItemSelected(item);
 	}
