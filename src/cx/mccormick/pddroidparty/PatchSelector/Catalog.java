@@ -11,28 +11,40 @@ import java.net.URL;
 import org.json.JSONObject;
 import org.json.JSONArray;
 
+
 public class Catalog {
-	public static final String TAG = "Catalog";
-	public static final int MAX_DEPTH = 100;
 
-	protected static File cacheDir;
-	public static void setCacheDir(File dir) {
-		cacheDir = dir;
-	}
-
-	// ----------------------------------------------------------//
+	static final String TAG = "Catalog";
 
 	public static class Link {
 		public String name;
 		public URL url = null;
 		boolean fromLinksTxt = false;
-		boolean isPdz = false;
 		boolean scanned = false;
 		Link(String name, URL url) {
 			this.name = name;
 			this.url = url;
 		}
 		public void scan(Group group) {}
+	}
+
+	public static class PdzLink extends Link {
+		PdzLink(String name, URL url) {
+			super(name, url);
+		}
+	}
+
+	public static class LinkLink extends Link {
+		LinkLink(String name, URL url) {
+			super(name, url);
+		}
+
+		@Override
+		public void scan(Group group) {
+			if(scanned) return;
+			scanned = true;
+			processLinksFileUrl(url, group);
+		}
 	}
 
 	public static class GhLink extends Link {
@@ -48,6 +60,7 @@ public class Catalog {
 						String objName = object.getString("name");
 						if(objType.equals("dir")) {
 							Group n = group.getGroup(objName);
+							if(n == null) continue;
 							n.link = new GhLink(name, new URL(object.getString("url")));
 						} else {
 							String downloadUrl = object.optString("download_url", object.optString("browser_download_url", null));
@@ -56,7 +69,7 @@ public class Catalog {
 							if(objName.endsWith(".pdz")) {
 								String patchName = objName.substring(0, objName.length() - 4);
 								Item n = group.get(patchName);
-								n.link = new Link(patchName, objUrl);
+								n.link = new PdzLink(patchName, objUrl);
 							} else if(objName.equals("links.txt")) {
 								processLinksFileUrl(objUrl, group);
 							}
@@ -71,7 +84,6 @@ public class Catalog {
 		public void scan(Group group) {
 			if(scanned) return;
 			scanned = true;
-			if(group.depth() >= MAX_DEPTH) return;
 			new StringDownloader(){
 				@Override
 				protected void onPostExecute(String downloadedString) {
@@ -99,36 +111,14 @@ public class Catalog {
 
 	}
 
-	public static class LinkLink extends Link {
-		LinkLink(String name, URL url) {
-			super(name, url);
-		}
-
-		@Override
-		public void scan(Group group) {
-			if(scanned) return;
-			scanned = true;
-			if(group.depth() >= MAX_DEPTH) return;
-			processLinksFileUrl(url, group);
-		}
-	}
-
 	private static Link buildLink(String linksLine) {
 		String[] words = linksLine.split(" ");
 		if(words.length < 3) return null;
 		try {
-			if(words[0].equals("gh")) {
-				URL url = new URL(words[2]);
-				return new GhLink(words[1], url);
-			} else if(words[0].equals("pdz")) {
-				URL url = new URL(words[2]);
-				Link link = new Link(words[1], url);
-				link.isPdz = true;
-				return link;
-			} else if(words[0].equals("links")) {
-				URL url = new URL(words[2]);
-				return new LinkLink(words[1], url);
-			}
+			URL url = new URL(words[2]);
+			if(words[0].equals("gh")) return new GhLink(words[1], url);
+			else if(words[0].equals("pdz")) return new PdzLink(words[1], url);
+			else if(words[0].equals("links")) return new LinkLink(words[1], url);
 		} catch(Exception e) { return null;}
 		return null;
 	}
@@ -138,16 +128,16 @@ public class Catalog {
 		if(link != null) {
 			link.fromLinksTxt = true;
 			Node n;
-			if(link.isPdz) n = parent.get(link.name);
+			if(link instanceof PdzLink) n = parent.get(link.name);
 			else n = parent.getGroup(link.name);
-			if(n.link == null) {
+			if(n != null && n.link == null) {
 				n.link = link;
+				parent.getRoot().refresh();
 				String linktype = "none";
-				if(link.isPdz) linktype = "pdz";
+				if(link instanceof PdzLink) linktype = "pdz";
 				else if(link instanceof GhLink) linktype = "gh";
 				else if(link instanceof LinkLink) linktype = "link";
 				Log.d(TAG, "add '" + linktype + "' link: '" + link.name + "' to " + parent.getPath());
-				parent.getRoot().refresh();
 			}
 		}
 	}
@@ -222,6 +212,7 @@ public class Catalog {
 	}
 
 	public static class Group extends Node {
+		public static final int MAX_DEPTH = 100;
 		public List<Item> items = new ArrayList<Item>();
 		public List<Group> groups = new ArrayList<Group>();
 
@@ -297,6 +288,7 @@ public class Catalog {
 		}
 
 		public Group getGroup(String name) {
+			if(depth() >= Group.MAX_DEPTH) return null;
 			Group n = findGroup(name);
 			if(n == null) {
 				n = new Group(name, this);
@@ -319,7 +311,6 @@ public class Catalog {
 		public void scan(boolean recursive) {
 			if(link != null && ! recursive) link.scan(this);
 			if(!file.isDirectory()) return;
-			if(depth() >= MAX_DEPTH) return;
 			File[] files = file.listFiles();
 			for (File f: files) {
 				if(f.isDirectory()) {
@@ -327,7 +318,7 @@ public class Catalog {
 						Item n = get(f.getName());
 					} else {
 						Group n = getGroup(f.getName());
-						if(recursive) n.scan(true);
+						if(n != null && recursive) n.scan(true);
 					}
 				} else if(f.getName().equals("links.txt")) {
 					processLinksFile(f);

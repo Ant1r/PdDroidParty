@@ -424,7 +424,6 @@ public class PatchSelector extends AppCompatActivity {
 		myToolbar.setTitle("PdDroidParty Patch Selector");
 		setSupportActionBar(myToolbar);
 
-		Catalog.setCacheDir(getCacheDir());
 		catalog = new CatalogView(PatchSelector.this, patchesPath){
 			@Override
 			public void runPatchDir(String patchDir) {

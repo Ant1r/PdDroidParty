@@ -33,12 +33,12 @@ import cx.mccormick.pddroidparty.PatchSelector.Catalog.*;
 
 public class CatalogView {
 	private static final String TAG = "CatalogView";
-	private Group root;
+	private final Group root;
 	private Group current;
-	private Context context;
-	private ListView view;
-	private List<Node> displayedList = new ArrayList<Node>();
-
+	private final Context context;
+	private final ListView view;
+	private final List<Node> displayedList = new ArrayList<Node>();
+	private final CatalogAdapter adapter;
 	private final int REFRESH_DELAY_MS = 200;
 
 	CatalogView(AppCompatActivity activity, String rootPath) {
@@ -93,6 +93,9 @@ public class CatalogView {
 			}
 		});
 
+		adapter = new CatalogAdapter(R.layout.catalog_item, displayedList);
+		view.setAdapter(adapter);
+
 		activity.getOnBackPressedDispatcher().addCallback(backPressedCallback);
 
 		root.scan(true);
@@ -141,11 +144,6 @@ public class CatalogView {
 			if (imageView != null) {
 				if(n == current) {
 					imageView.setImageResource(R.drawable.ic_menu_back);
-					TextView pathText = (TextView) convertView.findViewById(R.id.path);
-					if(pathText != null && n.parent != null) {
-						pathText.setText(n.parent.getPath() + "/");
-						pathText.setVisibility(1);
-					}
 				} else {
 					if(n instanceof Group) {
 						if(n.link != null && n.link.fromLinksTxt == true)
@@ -155,6 +153,13 @@ public class CatalogView {
 					else if(! n.file.exists()) imageView.setImageResource(R.drawable.download);
 					else imageView.setImageResource(R.drawable.icon);
 				}
+			}
+			TextView pathText = (TextView) convertView.findViewById(R.id.path);
+			if(pathText != null) {
+				if(n == current && n.parent != null) {
+					pathText.setText(n.parent.getPath() + "/");
+					pathText.setVisibility(View.VISIBLE);
+				} else pathText.setVisibility(View.GONE);
 			}
 			return convertView;
 		}
@@ -182,9 +187,7 @@ public class CatalogView {
 		for(Group n: current.groups) {
 			if(n.containsItems()) displayedList.add(n);
 		}
-		final CatalogAdapter adapter = 
-			new CatalogAdapter(R.layout.catalog_item, displayedList);
-		view.setAdapter(adapter);
+		adapter.notifyDataSetChanged();
 		backPressedCallback.setEnabled(current.parent != null);
 		if(current.parent == null) print();
 	}
