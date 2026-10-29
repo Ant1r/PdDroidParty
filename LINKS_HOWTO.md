@@ -5,7 +5,7 @@ The “*links*” feature in **PdDroidParty** allows users to share online Pd pa
 The patches must be available for download in the form of *pdz* files, which are zip files renamed with the extension `.pdz`. The compressed directory must contain an entry Pd patch called `droidparty_main.pd`.
 
 
-### Structure of the "links" file
+## Structure of the "links" file
 
 Any file named `links.txt` located in the PdDroidParty external storage directory (normally `/sdcard/Android/data/cx.mccormick.pddroidparty/files`), or in its subdirectories, is analyzed this way:
 
@@ -14,50 +14,53 @@ Any file named `links.txt` located in the PdDroidParty external storage director
  (note if no line starts with "`# LINKS`" or "`# ENDLINKS`", the whole file is taken into account)
 - each remaining line of the file is checked to see if it is a valid link. 
 
-A link line must contain at least 3 words (no spaces allowed...): `TYPE`, `NAME` and `URL`, in this order.
+A link line must contain at least 3 words (no spaces allowed...): **`TYPE`** **`NAME`** **`URL`**
 
-`NAME` is the name of the directory or item designated by the link, and will be displayed by the Patch Selector.  
-`URL` is a web address.  
-`TYPE` is used to determine how to use `URL`.
+**`NAME`** is the name of the subdirectory or item that will be added to the directory where the *links* file is located.  
+**`URL`** is a web address.  
+**`TYPE`** is used to determine how to use `URL`.
 
-### Link types
+## Link types
 
 The allowed types are:
 
-- **`pdz`**: the `URL` points to a downloadable pdz file. The `NAME` must match the name of the compressed directory in the pdz file.
-- **`links`**: the `URL` points to a downloadable *links* file, which will be parsed the same way.
-- **`gh`**: github type. The `URL` points to a server that provides the GitHub API or a compatible API.
+### **`- "pdz"`**
 
+**`URL`** points to a downloadable pdz file. **`NAME`** must match the name of the compressed directory in the pdz file.
 
-### Example
+#### Example:
 
-A file named `links.txt` is located in the `/sdcard/Android/data/cx.mccormick.pddroidparty/files/user_patches` directory.
+A file named `links.txt` and located in the `user_patches/` directory in PdDroidParty external storage, contains the line:  
+**`pdz piano https://janedoe.com/pddroidpatches/piano.pdz`**  
 
-If this file contains the line:  
-`pdz piano https://janedoe.com/pddroidpatches/piano.pdz`  
-an entry named `piano` is created in the directory `user_patches` of the PatchSelector.  
+An entry named **`piano`** is added to the `user_patches/` directory in the PatchSelector.  
 This entry is marked as *downloadable* and the patch can be installed on demand, after what it becomes *playable*.  
-When played, the patch file `/sdcard/Android/data/cx.mccormick.pddroidparty/files/user_patches/piano/droidparty_main.pd` is loaded by Pd.
+When played, Pd loads `/sdcard/Android/data/cx.mccormick.pddroidparty/files/user_patches/piano/droidparty_main.pd`.
 
-If this file contains the line:  
-`links janesynths https://janedoe.com/pddroidpatches/catalog.txt`  
-a subdirectory called `janesynths` is created in the directory `user_patches` of the PatchSelector; when the user enters this directory, the file `catalog.txt` is downloaded and analyzed as a *links* file and can, in turn, create new items or subdirectories in `user_patches/janesynths/`.
+### **`- "links"`**
+`URL` points to a downloadable *links* file, which will be parsed the same way.
 
-----
+#### Example:
 
-### Detail of the **`gh`** link 
+A file named `links.txt` and located in the `user_patches/` directory, contains the line:  
+**`links janesynths https://janedoe.com/pddroidpatches/catalog.txt`**  
 
-The **`gh`** link can point to different GitHub-API-like contents:
+A subdirectory called **`janesynths`** is created in the `user_patches/` directory; when the user enters this subdirectory, the file `catalog.txt` is downloaded and analyzed as a *links* file and can, in turn, create new items or subdirectories in `user_patches/janesynths/`.
 
-- a **directory** in a repository, viewed as a local storage directory. Ex:  
-`gh janedoe_synths https://api.github.com/repos/janedoe/PdDroidPatches/contents/public`  
-points to the `public` directory of the `janedoe/PdDroidPatches` Gihub repo.  
+### **`- "gh"`**
+`URL` points to a server that provides the GitHub API or a compatible API.
+
+A **`gh`** link can point to different GitHub-API-like contents:
+
+- the **directory** of a repository, viewed as a local storage directory. Ex:  
+**`gh janedoe_synths https://api.github.com/repos/janedoe/PdDroidPatches/contents/synths`**  
+points to the `synths` directory of the `janedoe/PdDroidPatches` Gihub repo.  
 This directory can contain pdz files, a `links.txt` file, or subdirectories themselves containing pdz files, `links.txt` or subdirs, and so on.
 
-- a **release** in a github repo, like:  
-`gh janedoe_synths https://api.github.com/repos/janedoe/PdDroidPatches/releases/tags/synthstag`  
-In this case, the description text of the *release* is treated as a *links* file (the `body` field in the JSON), and its lines (possibly only between "`# LINKS`" and "`# ENDLINKS`" lines) are parsed for links.  
-Moreover, the *release assets* (the `assets` array field of the JSON) are taken into account too: if an asset is named `links.txt`, it is parsed for links; each asset named `*.pdz` is made available for installation.
+- the **release** of a github repo, like:  
+**`gh janedoe_synths https://api.github.com/repos/janedoe/PdDroidPatches/releases/tags/synthstag`**  
+In this case, the **description text** of the release (the `body` field in the JSON) is treated as a *links* file, and its lines (only between "`# LINKS`" and "`# ENDLINKS`" lines if present) are parsed for links.  
+Moreover, the **release assets** (the `assets` array field of the JSON) are taken into account too: if an asset is named `links.txt`, it is parsed for links; an asset named `*.pdz` is made available for installation.
 
 
 
