@@ -1,6 +1,5 @@
 package cx.mccormick.pddroidparty.PatchSelector;
 
-import java.io.IOException;
 import java.io.File;
 import java.util.List;
 import java.util.ArrayList;
@@ -10,26 +9,20 @@ import java.util.Comparator;
 import android.util.Log;
 import android.content.Context;
 import android.view.View;
-import android.view.ViewGroup;
-import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.widget.ListView;
-import android.widget.TextView;
-import android.widget.ImageView;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemLongClickListener;
-import android.widget.ArrayAdapter;
 import android.widget.PopupMenu;
 import android.widget.PopupMenu.OnMenuItemClickListener;
 import android.os.Handler;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.activity.ComponentActivity;
 import androidx.activity.OnBackPressedCallback;
 
 import cx.mccormick.pddroidparty.R;
-import cx.mccormick.pddroidparty.PatchSelector.Catalog.*;
+import cx.mccormick.pddroidparty.PatchSelector.Nodes.*;
 
 public class CatalogView {
 	private static final String TAG = "CatalogView";
@@ -93,7 +86,7 @@ public class CatalogView {
 			}
 		});
 
-		adapter = new CatalogAdapter(R.layout.catalog_item, displayedList);
+		adapter = new CatalogAdapter(context, R.layout.catalog_item, displayedList);
 		view.setAdapter(adapter);
 
 		activity.getOnBackPressedDispatcher().addCallback(backPressedCallback);
@@ -118,53 +111,6 @@ public class CatalogView {
 		Log.d(TAG, "catalog: \n" + root.print(""));
 	}
 
-	private class CatalogAdapter extends ArrayAdapter<Node> {
-
-		private int resourceLayout;
-		private Context mContext;
-
-		public CatalogAdapter(int resource, List<Node> items) {
-			super(context, resource, items);
-			this.resourceLayout = resource;
-			this.mContext = context;
-		}
-
-		@Override
-		public View getView(int position, View convertView, ViewGroup parent) {
-			if(convertView == null) {
-				convertView = LayoutInflater.from(getContext()).inflate(resourceLayout, parent, false);
-			}
-			Node n = getItem(position);
-
-			TextView textView = (TextView) convertView.findViewById(R.id.name);
-			if (textView != null) {
-				textView.setText(n.name);
-			}
-			ImageView imageView = (ImageView) convertView.findViewById(R.id.icon);
-			if (imageView != null) {
-				if(n == current) {
-					imageView.setImageResource(R.drawable.ic_menu_back);
-				} else {
-					if(n instanceof Group) {
-						if(n.link != null && n.link.fromLinksTxt == true)
-							imageView.setImageResource(R.drawable.ic_menu_archive_online);
-						else imageView.setImageResource(R.drawable.ic_menu_archive);
-					}
-					else if(! n.file.exists()) imageView.setImageResource(R.drawable.download);
-					else imageView.setImageResource(R.drawable.icon);
-				}
-			}
-			TextView pathText = (TextView) convertView.findViewById(R.id.path);
-			if(pathText != null) {
-				if(n == current && n.parent != null) {
-					pathText.setText(n.parent.getPath() + "/");
-					pathText.setVisibility(View.VISIBLE);
-				} else pathText.setVisibility(View.GONE);
-			}
-			return convertView;
-		}
-	}
-
 	private static void sortNodeList(List<? extends Node> list) {
 		Collections.sort(list, new Comparator<Node>() {
 			public int compare(Node a, Node b) {
@@ -174,11 +120,12 @@ public class CatalogView {
 	}
 
 	private void refresh() {
+		boolean showBackNode = (current.parent != null);
 		Log.d(TAG, "refreshing " + current.getPath());
 		current.scan(false);
 		displayedList.clear();
 		// if not root, add 'go back' item
-		if(current.parent != null) displayedList.add(current);
+		if(showBackNode) displayedList.add(current);
 		// patches first
 		sortNodeList(current.items);
 		displayedList.addAll(current.items);
@@ -187,9 +134,9 @@ public class CatalogView {
 		for(Group n: current.groups) {
 			if(n.containsItems()) displayedList.add(n);
 		}
-		adapter.notifyDataSetChanged();
-		backPressedCallback.setEnabled(current.parent != null);
-		if(current.parent == null) print();
+		adapter.notify(showBackNode);
+		backPressedCallback.setEnabled(showBackNode);
+		if(! showBackNode) print();
 	}
 
 	private class RefreshScheduler {
